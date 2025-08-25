@@ -4,6 +4,11 @@ Backend API for AkiraFlex projects, built with [NestJS](https://nestjs.com/) and
 
 ---
 
+## Requirements
+
+- Node.js (v22)
+- PostgreSQL (v17)
+
 ## 🚀 Installation
 
 Clone the repository and install dependencies:
@@ -47,10 +52,32 @@ npm run format          # Apply Prettier formatting
 
 ```bash
 src/
-├── modules/            # Functional modules (users, auth, etc.)
-├── common/             # DTOs, pipes, guards, interceptors
-├── config/             # Environment and service configuration
-├── main.ts             # Application entry point
+├── modules/
+│   ├── auth/             # Authentication and access control
+│   ├── users/            # User management
+│   ├── roles/            # Role definitions and permissions
+│   ├── organizations/    # Company and team structures
+│   ├── projects/         # Project lifecycle and metadata
+│   ├── workflows/        # Workflow definitions and execution
+│   ├── tasks/            # Task tracking and assignment
+│   ├── comments/         # Threaded discussions and notes
+│   ├── notifications/    # In-app and external alerts
+│   ├── files/            # File uploads and metadata
+│   ├── settings/         # User and system preferences
+│   ├── calendar/         # Calendar and scheduling
+│   ├── audit/            # Change tracking and history
+│   ├── files/            # File uploads and metadata
+│   ├── tenants/          # Multi-tenancy support
+│   ├── platform/         # Platform-specific logic
+│   └── reports/          # Aggregated data and analytics
+├── core/                 # Core application logic
+│   ├── filters/          # Custom exception filters
+│   ├── guards/           # Route guards
+│   ├── interceptors/     # Request/response interceptors
+│   └── pipes/            # Validation and transformation pipes
+├── config/               # Environment and service configuration
+├── definitions/          # Shared types and interfaces
+├── main.ts               # Application entry point
 ```
 
 ---
@@ -60,9 +87,19 @@ src/
 Create a `.env` file in the root with the following variables:
 
 ```env
+# App
 PORT=3000
-DATABASE_URL=postgres://user:pass@localhost:5432/akira_flex
-JWT_SECRET=your_secret_key
+NODE_ENV=development
+
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=postgres
+DB_NAME=multitenant
+
+# TypeORM
+DATABASE_URL=postgres://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
 ```
 
 ---

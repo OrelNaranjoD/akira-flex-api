@@ -1,10 +1,14 @@
 {
   "name": "akira-flex-api",
   "version": "0.0.4",
-  "description": "",
-  "author": "",
+  "description": "AkiraFlex API",
+  "author": "Orel Naranjo",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "Proprietary",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OrelNaranjoD/akira-flex-api.git"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -18,7 +22,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s"
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -45,6 +49,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^24.3.0",
     "@types/supertest": "^6.0.3",
+    "conventional-changelog-angular": "^8.0.0",
     "conventional-changelog-cli": "^5.0.0",
     "eslint": "^9.34.0",
     "eslint-config-prettier": "^10.1.8",

@@ -11,8 +11,22 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/OrelNaranjoD/akira-flex-api.git
 cd akira-flex-api
+$env:GITHUB_FLEX_TOKEN="your_token_here"
 npm install
 ```
+
+Note: You need to have your GitHub token set as an environment variable for the installation to work.
+Go to [GitHub](https://github.com) and create a personal access token with the necessary permissions.
+
+Steps:
+
+1. Click on your profile picture in the top right corner and select "Settings".
+2. In the left sidebar, click on "Developer settings".
+3. Click on "Personal access tokens" and then "Tokens (classic)".
+4. Click "Generate new token", give it a descriptive name, and select the scopes you need.
+5. Select the scopes related to "repo" and "write:packages".
+6. Click "Generate token" and copy the token.
+7. Set the token using `$env:GITHUB_FLEX_TOKEN="your_token_here"`.
 
 ---
 

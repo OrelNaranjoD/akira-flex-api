@@ -16,7 +16,7 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/OrelNaranjoD/akira-flex-api.git
 cd akira-flex-api
-$env:GITHUB_FLEX_TOKEN="your_token_here"
+$env:FLEX_LIB_TOKEN="your_token_here"
 npm install
 ```
 
@@ -84,7 +84,13 @@ src/
 
 ## 🔐 Environment Variables
 
-Create a `.env` file in the root with the following variables:
+You must create the following files in the project root:
+
+- `.env`: for development
+- `.env.test`: for testing
+- `.env.example` and `.env.test.example`: examples to share configuration without real credentials
+
+Example `.env`:
 
 ```env
 # App
@@ -95,22 +101,45 @@ NODE_ENV=development
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
-DB_PASS=postgres
-DB_NAME=multitenant
+DB_PASS=your_password
+DB_NAME=akira_develop
 
 # TypeORM
 DATABASE_URL=postgres://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
 ```
 
+Example `.env.test`:
+
+```env
+# App
+PORT=3000
+NODE_ENV=test
+
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=postgres
+DB_NAME=akira_test
+
+# TypeORM
+DATABASE_URL=postgres://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+```
+
+You can copy `.env.example` and `.env.test.example` to create your own environment files.
+
 ---
 
 ## 🧪 Testing
 
-Tests are powered by [Vitest](https://vitest.dev/). To run them:
+Unit and e2e tests use [Jest](https://jestjs.io/). To run them:
 
 ```bash
 npm run test
 ```
+
+By default, Jest will load `.env.test` for tests. Make sure your test database is configured and accessible.
+
 
 ---
 

@@ -16,7 +16,7 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/OrelNaranjoD/akira-flex-api.git
 cd akira-flex-api
-$env:GITHUB_FLEX_TOKEN="your_token_here"
+$env:FLEX_LIB_TOKEN="your_token_here"
 npm install
 ```
 

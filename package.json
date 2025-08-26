@@ -29,7 +29,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/typeorm": "^11.0.0",
-    "@orelnaranjod/flex-shared-lib": "^1.0.3",
+    "@orelnaranjod/flex-shared-lib": "^1.1.1",
     "dotenv": "^17.2.1",
     "dotenv-expand": "^12.0.2",
     "pg": "^8.16.3",

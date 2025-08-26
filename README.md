@@ -1,6 +1,8 @@
 # 🧩 AkiraFlex API
 
-Backend API for AkiraFlex projects, built with [NestJS](https://nestjs.com/) and TypeScript. This service exposes RESTful endpoints for managing shared entities, authentication, and centralized business logic.
+Backend API for AkiraFlex projects, built with [NestJS](https://nestjs.com/) and TypeScript. This
+service exposes RESTful endpoints for managing shared entities, authentication, and centralized
+business logic.
 
 ---
 
@@ -20,8 +22,9 @@ $env:FLEX_LIB_TOKEN="your_token_here"
 npm install
 ```
 
-Note: You need to have your GitHub token set as an environment variable for the installation to work.
-Go to [GitHub](https://github.com) and create a personal access token with the necessary permissions.
+Note: You need to have your GitHub token set as an environment variable for the installation to
+work. Go to [GitHub](https://github.com) and create a personal access token with the necessary
+permissions.
 
 Steps:
 
@@ -31,7 +34,7 @@ Steps:
 4. Click "Generate new token", give it a descriptive name, and select the scopes you need.
 5. Select the scopes related to "repo" and "write:packages".
 6. Click "Generate token" and copy the token.
-7. Set the token using `$env:GITHUB_FLEX_TOKEN="your_token_here"`.
+7. Set the token using `$env:FLEX_LIB_TOKEN="your_token_here"`.
 
 ---
 
@@ -138,8 +141,8 @@ Unit and e2e tests use [Jest](https://jestjs.io/). To run them:
 npm run test
 ```
 
-By default, Jest will load `.env.test` for tests. Make sure your test database is configured and accessible.
-
+By default, Jest will load `.env.test` for tests. Make sure your test database is configured and
+accessible.
 
 ---
 
@@ -155,7 +158,8 @@ http://localhost:3000/api/docs
 
 ## 🧭 Commit Convention
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) in English for traceability and version control. Examples:
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) in English for
+traceability and version control. Examples:
 
 ```bash
 feat(AFS-101): add user registration endpoint
@@ -166,7 +170,9 @@ fix(AFS-102): correct token expiration logic
 
 ## 📦 Release Strategy
 
-Releases are published from the `main` branch via GitHub Actions. The team works on `develop` and merges manually when ready to publish. The release type (`patch`, `minor`, `major`) is selected manually.
+Releases are published from the `main` branch via GitHub Actions. The team works on `develop` and
+merges manually when ready to publish. The release type (`patch`, `minor`, `major`) is selected
+manually.
 
 ---
 

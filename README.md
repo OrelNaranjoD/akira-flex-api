@@ -54,33 +54,48 @@ npm run format          # Apply Prettier formatting
 ## 📦 Project Structure
 
 ```bash
-src/
-├── modules/
-│   ├── auth/             # Authentication and access control
-│   ├── users/            # User management
-│   ├── roles/            # Role definitions and permissions
-│   ├── organizations/    # Company and team structures
-│   ├── projects/         # Project lifecycle and metadata
-│   ├── workflows/        # Workflow definitions and execution
-│   ├── tasks/            # Task tracking and assignment
-│   ├── comments/         # Threaded discussions and notes
-│   ├── notifications/    # In-app and external alerts
-│   ├── files/            # File uploads and metadata
-│   ├── settings/         # User and system preferences
-│   ├── calendar/         # Calendar and scheduling
-│   ├── audit/            # Change tracking and history
-│   ├── files/            # File uploads and metadata
-│   ├── tenants/          # Multi-tenancy support
-│   ├── platform/         # Platform-specific logic
-│   └── reports/          # Aggregated data and analytics
-├── core/                 # Core application logic
-│   ├── filters/          # Custom exception filters
-│   ├── guards/           # Route guards
-│   ├── interceptors/     # Request/response interceptors
-│   └── pipes/            # Validation and transformation pipes
-├── config/               # Environment and service configuration
-├── definitions/          # Shared types and interfaces
-├── main.ts               # Application entry point
+akira-flex-api/
+├── src/
+│   ├── core/                 # Application bootstrap and infrastructure
+│   │   ├── database/         # ORM configuration, migrations, factories
+│   │   ├── error/            # Centralized error handling
+│   │   ├── audit/            # Audit logging
+│   │   ├── definitions/      # Temp Shared definitions for AkiraFlex lib
+│   │   ├── bootstrap.ts      # App initialization logic
+│   │   ├── app.module.ts     # Root module composition
+│   │   └── main.ts           # Application entry point
+│   ├── modules/              # Domain-specific business logic
+│   │   ├── platform/         # Platform-side modules (admin context)
+│   │   │   ├── auth/
+│   │   │   ├── users/
+│   │   │   ├── roles/
+│   │   │   ├── organizations/
+│   │   │   ├── settings/
+│   │   │   ├── tenants/
+│   │   │   ├── reports/
+│   │   │   └── status/
+│   │   ├── tenant/           # Tenant-side modules (client context)
+│   │   │   ├── auth/
+│   │   │   ├── users/
+│   │   │   ├── roles/
+│   │   │   ├── organizations/
+│   │   │   ├── projects/
+│   │   │   ├── workflows/
+│   │   │   ├── tasks/
+│   │   │   ├── comments/
+│   │   │   ├── notifications/
+│   │   │   ├── files/
+│   │   │   ├── settings/
+│   │   │   ├── calendar/
+│   │   │   ├── reports/
+│   │   │   └── status/
+├── test/                     # Unit and integration tests
+│   ├── e2e/                  # End-to-end tests
+│   └── unit/                 # Unit tests
+│       └── platform/         # Unit tests for platform module
+│       └── tenant/           # Unit tests for tenant module
+│       └── core/             # Unit tests for core module
+├── README.md                 # Project documentation
 ```
 
 ---

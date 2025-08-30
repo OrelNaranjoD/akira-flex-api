@@ -9,17 +9,17 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { UserTenantService } from './user-tenant.service';
-import { CreateUserTenantDto } from './dtos/create-user-tenant.dto';
-import { UpdateUserTenantDto } from './dtos/update-user-tenant.dto';
+import { CreateTenantUserDto } from './dtos/create-tenant-user.dto';
+import { TenantUserService } from './tenant-user.service';
+import { UpdateTenantUserDto } from './dtos/update-tenant-user.dto';
 
 /**
  * Controller for managing tenant users.
- * @class UserTenantController
+ * @class TenantUserService
  */
 @Controller('user-tenants')
-export class UserTenantController {
-  constructor(private readonly userTenantService: UserTenantService) {}
+export class TenantUserController {
+  constructor(private readonly tenantUserService: TenantUserService) {}
 
   /**
    * Creates a new tenant user.
@@ -28,8 +28,19 @@ export class UserTenantController {
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() createUserTenantDto: CreateUserTenantDto) {
-    return this.userTenantService.create(createUserTenantDto);
+  async create(@Body() createUserTenantDto: CreateTenantUserDto) {
+    return this.tenantUserService.createUser(createUserTenantDto);
+  }
+
+  /**
+   * Registers a new tenant user (paridad con platform).
+   * @param {CreateUserTenantDto} dto - User registration data.
+   * @returns {Promise<TenantUser>} Registered user.
+   */
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  async register(@Body() dto: CreateTenantUserDto) {
+    return this.tenantUserService.registerUser(dto);
   }
 
   /**
@@ -38,7 +49,7 @@ export class UserTenantController {
    */
   @Get()
   async findAll() {
-    return this.userTenantService.findAll();
+    return this.tenantUserService.findAll();
   }
 
   /**
@@ -48,7 +59,7 @@ export class UserTenantController {
    */
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    return this.userTenantService.findOne(id);
+    return this.tenantUserService.findOne(id);
   }
 
   /**
@@ -58,8 +69,8 @@ export class UserTenantController {
    * @returns {Promise<TenantUser>} Updated user.
    */
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateUserTenantDto: UpdateUserTenantDto) {
-    return this.userTenantService.update(id, updateUserTenantDto);
+  async update(@Param('id') id: string, @Body() updateUserTenantDto: UpdateTenantUserDto) {
+    return this.tenantUserService.update(id, updateUserTenantDto);
   }
 
   /**
@@ -70,6 +81,6 @@ export class UserTenantController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string): Promise<void> {
-    return this.userTenantService.remove(id);
+    return this.tenantUserService.remove(id);
   }
 }

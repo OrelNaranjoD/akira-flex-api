@@ -2,9 +2,9 @@ import { IsString, IsEmail, IsArray, IsOptional } from 'class-validator';
 
 /**
  * Data Transfer Object for creating a tenant user.
- * @class CreateUserTenantDto
+ * @class CreateTenantUserDto
  */
-export class CreateUserTenantDto {
+export class CreateTenantUserDto {
   /**
    * The email address of the user.
    * @type {string}

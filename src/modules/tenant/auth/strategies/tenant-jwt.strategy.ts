@@ -3,8 +3,8 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TenantAuthService } from './tenant-auth.service';
 import { JwtPayload } from '@orelnaranjod/flex-shared-lib';
+import { TenantAuthService } from '../tenant-auth.service';
 
 /**
  * JWT strategy for tenant authentication.

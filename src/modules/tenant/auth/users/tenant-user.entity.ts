@@ -7,13 +7,14 @@ import {
   BeforeInsert,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { TenantUserEntity } from '@orelnaranjod/flex-shared-lib';
 
 /**
  * Represents a tenant user within a specific company.
- * @class UserTenant
+ * @class TenantUser
  */
 @Entity('user_tenants')
-export class UserTenant {
+export class TenantUser implements TenantUserEntity {
   /**
    * Unique identifier for the user.
    * @type {string}

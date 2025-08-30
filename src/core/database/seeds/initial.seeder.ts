@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { UserPlatform } from '../../../modules/platform/users/user-platform.entity';
+import { PlatformUser } from '../../../modules/platform/auth/users/entities/platform-user.entity';
 
 /**
  * Seeder that creates the initial platform administrator user in platform_users if the table is empty.
@@ -21,11 +21,11 @@ export class InitialSeeder {
    * This method is useful for development and first-time deployments, ensuring that protected routes are accessible.
    */
   async seed(): Promise<void> {
-    const count = await this.dataSource.getRepository(UserPlatform).count();
+    const count = await this.dataSource.getRepository(PlatformUser).count();
     const envPassword = this.configService.get<string>('SUPER_ADMIN_PASSWORD');
     if (count === 0) {
       // Create the initial admin user for the platform
-      const admin = new UserPlatform();
+      const admin = new PlatformUser();
       admin.email = 'admin@akiraflex.com';
       admin.password = envPassword!;
       admin.firstName = 'Platform';
@@ -33,7 +33,7 @@ export class InitialSeeder {
       admin.phone = '+525566667777';
       admin.roles = ['super_admin'];
       admin.active = true;
-      await this.dataSource.getRepository(UserPlatform).save(admin);
+      await this.dataSource.getRepository(PlatformUser).save(admin);
       this.logger.log('Platform administrator user created.');
     } else {
       this.logger.log('Platform users already exist, no action taken.');

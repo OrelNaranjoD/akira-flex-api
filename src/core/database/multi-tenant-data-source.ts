@@ -1,7 +1,6 @@
-// core/database/multi-tenant-data-source.ts
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { UserTenant } from '../../modules/tenant/users/user-tenant.entity';
+import { TenantUser } from '../../modules/tenant/auth/users/tenant-user.entity';
 
 /**
  * Factory function to create tenant-specific data sources.
@@ -21,7 +20,7 @@ export function createMultiTenantDataSourceOptions(
     type: 'postgres',
     url,
     schema: schemaName,
-    entities: [UserTenant],
+    entities: [TenantUser],
     synchronize: configService.get('NODE_ENV') !== 'production',
     logging: configService.get('NODE_ENV') !== 'production',
   };

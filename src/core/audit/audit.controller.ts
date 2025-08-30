@@ -1,19 +1,17 @@
 import { Controller, Get, Query, UseGuards, Param } from '@nestjs/common';
 import { AuditService } from './audit.service';
 import { AuditLog } from './audit-log.entity';
-import { UserRoles } from '@orelnaranjod/flex-shared-lib';
-import { PlatformJwtAuthGuard } from '../../modules/platform/auth/guards/platform-jwt-auth.guard';
-import { Roles } from '../../modules/platform/roles/decorators/roles.decorator';
-import { RolesGuard } from '../../modules/platform/roles/guards/roles.guard';
-
+import { PlatformPermissionGuard } from '../../modules/platform/auth/permissions/guards/platform-permission.guard';
+import { PlatformAuthGuard } from '../../modules/platform/auth/guards/platform-auth.guard';
+import { RequirePlatformPermission } from './decorators/platform-permissions.decorator';
+import { PlatformPermission } from '../definitions/definitions';
 /**
  * Controller for audit log management operations.
  * @class AuditController
  * @description /audit.
  */
 @Controller('audit')
-@UseGuards(PlatformJwtAuthGuard, RolesGuard)
-@Roles(UserRoles.SUPER_ADMIN, UserRoles.AUDITOR)
+@UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
 export class AuditController {
   /**
    * Creates an instance of AuditController.
@@ -36,6 +34,7 @@ export class AuditController {
    * @returns {Promise<{ logs: AuditLog[], total: number, page: number, limit: number }>} Paginated audit logs.
    * @description GET /.
    */
+  @RequirePlatformPermission(PlatformPermission.AUDIT_VIEW_ALL)
   @Get()
   async getAuditLogs(
     @Query()
@@ -97,6 +96,7 @@ export class AuditController {
    * @returns {Promise<{ logs: AuditLog[], total: number, page: number, limit: number }>} Paginated audit logs.
    * @description GET /user/:userId.
    */
+  @RequirePlatformPermission(PlatformPermission.AUDIT_VIEW)
   @Get('user/:userId')
   async getUserAuditLogs(
     @Param('userId') userId: string,
@@ -125,6 +125,7 @@ export class AuditController {
    * @returns {Promise<{ logs: AuditLog[], total: number, page: number, limit: number }>} Paginated audit logs.
    * @description GET /tenant/:tenantId.
    */
+  @RequirePlatformPermission(PlatformPermission.AUDIT_TENANT_VIEW)
   @Get('tenant/:tenantId')
   async getTenantAuditLogs(
     @Param('tenantId') tenantId: string,

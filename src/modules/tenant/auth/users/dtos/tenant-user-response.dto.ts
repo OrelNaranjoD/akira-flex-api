@@ -1,10 +1,11 @@
 import { Expose } from 'class-transformer';
+import { TenantUserResponseDto as DefTenantUserResponseDto } from '@definitions';
 
 /**
  * Data Transfer Object for tenant user response.
- * @class UserTenantResponseDto
+ * @class TenantUserResponseDto
  */
-export class UserTenantResponseDto {
+export class TenantUserResponseDto implements DefTenantUserResponseDto {
   @Expose()
   id: string;
 

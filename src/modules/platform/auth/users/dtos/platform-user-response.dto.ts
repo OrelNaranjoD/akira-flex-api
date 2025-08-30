@@ -1,10 +1,12 @@
 import { Expose } from 'class-transformer';
+//@TODO Fix import to shared lib
+import { PlatformUserResponseDto as DefCreatePlatformUserDto } from '@definitions';
 
 /**
  * Data Transfer Object for user platform response.
- * @class UserPlatformResponseDto
+ * @class PlatformUserResponseDto
  */
-export class UserPlatformResponseDto {
+export class PlatformUserResponseDto implements DefCreatePlatformUserDto {
   /**
    * Unique identifier for the user.
    * @type {string}

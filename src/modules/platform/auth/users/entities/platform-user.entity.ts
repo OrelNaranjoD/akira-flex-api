@@ -5,16 +5,24 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   BeforeInsert,
+  JoinTable,
+  ManyToMany,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { UserPlatformEntity } from '@definitions';
+import { PlatformRole } from '../../roles/entities/platform-role.entity';
+
+/**
+ * @todo Fix import to shared library (when moving types to shared lib, keep import as '@definitions').
+ */
+import { PlatformUserEntity } from '@definitions';
+import { PlatformPermission } from '../../permissions/entities/platform-permission.entity';
 
 /**
  * Represents a platform user.
- * @class UserPlatform
+ * @class PlatformUser
  */
-@Entity('user_platforms', { schema: 'public' })
-export class UserPlatform implements UserPlatformEntity {
+@Entity('users', { schema: 'public' })
+export class PlatformUser implements PlatformUserEntity {
   /**
    * Unique identifier for the user.
    * @type {string}
@@ -59,10 +67,31 @@ export class UserPlatform implements UserPlatformEntity {
 
   /**
    * User roles.
-   * @type {string[]}
+   * @type {PlatformRole[]}
    */
-  @Column('simple-array', { default: 'admin' })
-  roles: string[];
+  @ManyToMany(() => PlatformRole, { eager: true })
+  @JoinTable({
+    name: 'user_roles',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
+  })
+  roles: any;
+
+  /**
+   * Returns all permissions for the user derived from roles.
+   * @returns {PlatformPermission[]} Array of unique permissions.
+   */
+  get permissions(): PlatformPermission[] {
+    if (!this.roles) return [];
+    const perms: PlatformPermission[] = (this.roles as any[]).flatMap(
+      (role: any) => (role.permissions || []) as PlatformPermission[]
+    );
+    // Remove duplicates by id
+    const unique = new Map<string, PlatformPermission>(
+      perms.map((p: PlatformPermission) => [p.id, p] as [string, PlatformPermission])
+    );
+    return Array.from(unique.values());
+  }
 
   /**
    * User activation status.

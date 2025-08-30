@@ -1,19 +1,20 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
-import { PlatformJwtAuthGuard } from './guards/platform-jwt-auth.guard';
-import { RolesGuard } from '../roles/guards/roles.guard';
-import { Roles } from '../roles/decorators/roles.decorator';
-import { UserRoles } from '@orelnaranjod/flex-shared-lib';
 import { PlatformAuthService } from './platform-auth.service';
 import { RegisterDto } from './dtos/register.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { LoginRequestDto } from './dtos/login-request.dto';
+import { PlatformAuthGuard } from './guards/platform-auth.guard';
+import { PlatformPermissionGuard } from './permissions/guards/platform-permission.guard';
+import { RequirePlatformPermission } from './permissions/decorators/platform-permissions.decorator';
+//@TODO Fix import to shared lib.
+import { PlatformPermission } from '@definitions';
 
 /**
  * Controller for platform authentication operations.
  * @class PlatformAuthController
- * @description /auth/platform.
+ * @description /platform/auth.
  */
-@Controller('auth/platform')
+@Controller('platform/auth')
 export class PlatformAuthController {
   /**
    * Creates an instance of PlatformAuthController.
@@ -29,8 +30,8 @@ export class PlatformAuthController {
    * Only accessible by super_admin role.
    */
   @Post('register')
-  @UseGuards(PlatformJwtAuthGuard, RolesGuard)
-  @Roles(UserRoles.SUPER_ADMIN)
+  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
+  @RequirePlatformPermission(PlatformPermission.AUTH_REGISTER)
   async register(@Body() registerDto: RegisterDto): Promise<TokenResponseDto> {
     return this.authService.register(registerDto);
   }

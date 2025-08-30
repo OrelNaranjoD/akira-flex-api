@@ -3,9 +3,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PlatformAuthController } from './platform-auth.controller';
-import { PlatformJwtStrategy } from './platform-jwt.strategy';
-import { UserPlatform } from '../users/user-platform.entity';
+import { PlatformUser } from './users/entities/platform-user.entity';
 import { PlatformAuthService } from './platform-auth.service';
+import { PlatformJwtStrategy } from './strategies/platform-jwt.strategy';
 
 /**
  * Module for platform authentication functionality.
@@ -13,7 +13,7 @@ import { PlatformAuthService } from './platform-auth.service';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserPlatform]),
+    TypeOrmModule.forFeature([PlatformUser]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

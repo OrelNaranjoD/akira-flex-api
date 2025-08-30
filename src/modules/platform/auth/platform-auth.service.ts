@@ -2,11 +2,13 @@ import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { JwtPayload, AdminRole, JwtPayloadType } from '@orelnaranjod/flex-shared-lib';
+import { JwtPayloadType } from '@orelnaranjod/flex-shared-lib';
 import { LoginRequestDto } from './dtos/login-request.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { RegisterDto } from './dtos/register.dto';
-import { UserPlatform } from '../users/user-platform.entity';
+import { PlatformUser } from './users/entities/platform-user.entity';
+//@TODO Fix import  to shared lib.
+import { PlatformRole, JwtPayload } from '@definitions';
 
 /**
  * Service responsible for platform authentication operations.
@@ -15,13 +17,20 @@ import { UserPlatform } from '../users/user-platform.entity';
 @Injectable()
 export class PlatformAuthService {
   /**
+   * Service for platform authentication and authorization.
+   * Handles user registration, login, JWT token generation and validation.
+   * Implements RBAC using roles and permissions persisted in the database.
+   *
+   * @module PlatformAuthService
+   */
+  /**
    * Creates an instance of PlatformAuthService.
-   * @param {Repository<UserPlatform>} userRepository - Repository for platform users.
+   * @param {Repository<PlatformUser>} userRepository - Repository for platform users.
    * @param {JwtService} jwtService - JWT service for token generation.
    */
   constructor(
-    @InjectRepository(UserPlatform)
-    private readonly userRepository: Repository<UserPlatform>,
+    @InjectRepository(PlatformUser)
+    private readonly userRepository: Repository<PlatformUser>,
     private readonly jwtService: JwtService
   ) {}
 
@@ -70,10 +79,10 @@ export class PlatformAuthService {
    * Validates user credentials.
    * @param {string} email - User email.
    * @param {string} password - User password.
-   * @returns {Promise<UserPlatform | null>} User entity if valid, otherwise null.
+   * @returns {Promise<PlatformUser | null>} User entity if valid, otherwise null.
    * @private
    */
-  private async validateUser(email: string, password: string): Promise<UserPlatform | null> {
+  private async validateUser(email: string, password: string): Promise<PlatformUser | null> {
     const user = await this.userRepository.findOne({
       where: { email, active: true },
     });
@@ -87,15 +96,19 @@ export class PlatformAuthService {
 
   /**
    * Generates JWT tokens for a user.
-   * @param {UserPlatform} user - User entity.
+   * @param {PlatformUser} user - User entity.
    * @returns {Promise<TokenResponseDto>} Authentication tokens.
    * @private
    */
-  private async generateTokens(user: UserPlatform): Promise<TokenResponseDto> {
+  private async generateTokens(user: PlatformUser): Promise<TokenResponseDto> {
+    const permissions = user.roles
+      .flatMap((role) => role.permissions.map((p) => p.code))
+      .filter((value, index, self) => self.indexOf(value) === index);
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      roles: user.roles as AdminRole[],
+      roles: user.roles as PlatformRole[],
+      permissions,
       type: JwtPayloadType.PLATFORM,
     };
 
@@ -111,9 +124,9 @@ export class PlatformAuthService {
   /**
    * Validates JWT payload.
    * @param {JwtPayload} payload - JWT payload.
-   * @returns {Promise<UserPlatform>} User entity.
+   * @returns {Promise<PlatformUser>} User entity.
    */
-  async validatePayload(payload: JwtPayload): Promise<UserPlatform> {
+  async validatePayload(payload: JwtPayload): Promise<PlatformUser> {
     const user = await this.userRepository.findOne({
       where: { id: payload.sub, active: true },
     });

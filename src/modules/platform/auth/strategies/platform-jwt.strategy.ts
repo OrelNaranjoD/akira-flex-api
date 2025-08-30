@@ -2,8 +2,8 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PlatformAuthService } from './platform-auth.service';
-import type { JwtPayload } from '@orelnaranjod/flex-shared-lib';
+import type { JwtPayload } from '@definitions';
+import { PlatformAuthService } from '../platform-auth.service';
 
 /**
  * JWT strategy for platform authentication.
@@ -21,9 +21,10 @@ export class PlatformJwtStrategy extends PassportStrategy(Strategy, 'platform-jw
     private readonly configService: ConfigService,
     private readonly authService: PlatformAuthService
   ) {
+    const secretKey = configService.get('JWT_SECRET', 'platform-secret-key');
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: configService.get('JWT_SECRET', 'platform-secret-key'),
+      secretOrKey: secretKey,
       ignoreExpiration: false,
     });
   }
@@ -41,6 +42,7 @@ export class PlatformJwtStrategy extends PassportStrategy(Strategy, 'platform-jw
       sub: payload.sub,
       email: payload.email,
       roles: payload.roles,
+      permissions: payload.permissions,
       type: payload.type,
       tenantId: payload.tenantId,
     };

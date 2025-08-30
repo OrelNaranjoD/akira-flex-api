@@ -3,12 +3,12 @@ import { AuthGuard } from '@nestjs/passport';
 import { Observable } from 'rxjs';
 
 /**
- * Guard for platform JWT authentication.
- * @class PlatformJwtAuthGuard
- * @augments AuthGuard('platform-jwt')
+ * Guard for platform authentication.
+ * @class PlatformAuthGuard
+ * @augments AuthGuard('platform-auth')
  */
 @Injectable()
-export class PlatformJwtAuthGuard extends AuthGuard('platform-jwt') {
+export class PlatformAuthGuard extends AuthGuard('platform-auth') {
   /**
    * Overrides canActivate to handle public routes.
    * @param {ExecutionContext} context - Execution context.

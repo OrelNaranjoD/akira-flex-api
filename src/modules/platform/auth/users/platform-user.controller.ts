@@ -25,7 +25,7 @@ import type { JwtPayload } from '@orelnaranjod/flex-shared-lib';
  * @class PlatformUserController
  */
 @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
-@Controller('platforms/users')
+@Controller('platform/users')
 export class PlatformUserController {
   constructor(private readonly platformUserService: PlatformUserService) {}
 
@@ -49,6 +49,19 @@ export class PlatformUserController {
   @Get()
   async findAll() {
     return this.platformUserService.findAll();
+  }
+
+  /**
+   * Retrieves the owner information for the current authenticated user.
+   * Uses the user id (sub) from the validated JWT payload contained in request.user.
+   * @param user JwtPayload injected from the request (token).
+   * @returns The owner information of the platform user.
+   */
+  @RequirePlatformPermission(PlatformPermission.USER_ROLE_VIEW_OWN)
+  @Get('owner')
+  async getOwnerInfo(@PlatformUser() user: JwtPayload) {
+    // JwtPayload.sub contains the user id (UUID) per token generation.
+    return this.platformUserService.getOwnerInfo(user.sub);
   }
 
   /**
@@ -121,18 +134,5 @@ export class PlatformUserController {
     @Param('roleId') roleId: string
   ): Promise<void> {
     return this.platformUserService.assignRole(userId, roleId);
-  }
-
-  /**
-   * Retrieves the owner information for the current authenticated user.
-   * Uses the user id (sub) from the validated JWT payload contained in request.user.
-   * @param user JwtPayload injected from the request (token).
-   * @returns The owner information of the platform user.
-   */
-  @RequirePlatformPermission(PlatformPermission.USER_ROLE_VIEW_OWN)
-  @Get('owner')
-  async getOwnerInfo(@PlatformUser() user: JwtPayload) {
-    // JwtPayload.sub contains the user id (UUID) per token generation.
-    return this.platformUserService.getOwnerInfo(user.sub);
   }
 }

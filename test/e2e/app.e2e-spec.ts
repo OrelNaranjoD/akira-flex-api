@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../src/app.module';
+import { AuditService } from '../../src/core/audit/audit.service';
 
 const testHeaders = {
   'Content-Type': 'application/json',
@@ -29,7 +30,12 @@ async function createTestApp(): Promise<INestApplication> {
       }),
       AppModule,
     ],
-  }).compile();
+  })
+    .overrideProvider(AuditService)
+    .useValue({
+      log: async () => Promise.resolve(),
+    })
+    .compile();
 
   const app = moduleFixture.createNestApplication();
 

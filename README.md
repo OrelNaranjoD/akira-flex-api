@@ -1,6 +1,8 @@
 # 🧩 AkiraFlex API
 
-Backend API for AkiraFlex projects, built with [NestJS](https://nestjs.com/) and TypeScript. This service exposes RESTful endpoints for managing shared entities, authentication, and centralized business logic.
+Backend API for AkiraFlex projects, built with [NestJS](https://nestjs.com/) and TypeScript. This
+service exposes RESTful endpoints for managing shared entities, authentication, and centralized
+business logic.
 
 ---
 
@@ -20,8 +22,9 @@ $env:FLEX_LIB_TOKEN="your_token_here"
 npm install
 ```
 
-Note: You need to have your GitHub token set as an environment variable for the installation to work.
-Go to [GitHub](https://github.com) and create a personal access token with the necessary permissions.
+Note: You need to have your GitHub token set as an environment variable for the installation to
+work. Go to [GitHub](https://github.com) and create a personal access token with the necessary
+permissions.
 
 Steps:
 
@@ -31,7 +34,7 @@ Steps:
 4. Click "Generate new token", give it a descriptive name, and select the scopes you need.
 5. Select the scopes related to "repo" and "write:packages".
 6. Click "Generate token" and copy the token.
-7. Set the token using `$env:GITHUB_FLEX_TOKEN="your_token_here"`.
+7. Set the token using `$env:FLEX_LIB_TOKEN="your_token_here"`.
 
 ---
 
@@ -51,33 +54,50 @@ npm run format          # Apply Prettier formatting
 ## 📦 Project Structure
 
 ```bash
-src/
-├── modules/
-│   ├── auth/             # Authentication and access control
-│   ├── users/            # User management
-│   ├── roles/            # Role definitions and permissions
-│   ├── organizations/    # Company and team structures
-│   ├── projects/         # Project lifecycle and metadata
-│   ├── workflows/        # Workflow definitions and execution
-│   ├── tasks/            # Task tracking and assignment
-│   ├── comments/         # Threaded discussions and notes
-│   ├── notifications/    # In-app and external alerts
-│   ├── files/            # File uploads and metadata
-│   ├── settings/         # User and system preferences
-│   ├── calendar/         # Calendar and scheduling
-│   ├── audit/            # Change tracking and history
-│   ├── files/            # File uploads and metadata
-│   ├── tenants/          # Multi-tenancy support
-│   ├── platform/         # Platform-specific logic
-│   └── reports/          # Aggregated data and analytics
-├── core/                 # Core application logic
-│   ├── filters/          # Custom exception filters
-│   ├── guards/           # Route guards
-│   ├── interceptors/     # Request/response interceptors
-│   └── pipes/            # Validation and transformation pipes
-├── config/               # Environment and service configuration
-├── definitions/          # Shared types and interfaces
-├── main.ts               # Application entry point
+akira-flex-api/
+├── src/
+│   ├── core/                 # Application bootstrap and infrastructure
+│   │   ├── database/         # ORM configuration, migrations, factories
+│   │   ├── error/            # Centralized error handling
+│   │   ├── audit/            # Audit logging
+│   │   ├── definitions/      # Temp Shared definitions for AkiraFlex lib
+│   │   ├── bootstrap.ts      # App initialization logic
+│   │   ├── app.module.ts     # Root module composition
+│   │   └── main.ts           # Application entry point
+│   ├── modules/              # Domain-specific business logic
+│   │   ├── platform/         # Platform-side modules (admin context)
+│   │   │   ├── auth/
+│   │   │   │   ├── users/
+│   │   │   │   ├── roles/
+│   │   │   │   └── permissions/
+│   │   │   ├── organizations/
+│   │   │   ├── settings/
+│   │   │   ├── tenants/
+│   │   │   ├── reports/
+│   │   │   └── status/
+│   │   ├── tenant/           # Tenant-side modules (client context)
+│   │   │   ├── auth/
+│   │   │   │   ├── users/
+│   │   │   │   ├── roles/
+│   │   │   │   └── permissions/
+│   │   │   ├── organizations/
+│   │   │   ├── projects/
+│   │   │   ├── workflows/
+│   │   │   ├── tasks/
+│   │   │   ├── comments/
+│   │   │   ├── notifications/
+│   │   │   ├── files/
+│   │   │   ├── settings/
+│   │   │   ├── calendar/
+│   │   │   ├── reports/
+│   │   │   └── status/
+├── test/                     # Unit and integration tests
+│   ├── e2e/                  # End-to-end tests
+│   └── unit/                 # Unit tests
+│       └── platform/         # Unit tests for platform module
+│       └── tenant/           # Unit tests for tenant module
+│       └── core/             # Unit tests for core module
+├── README.md                 # Project documentation
 ```
 
 ---
@@ -138,8 +158,8 @@ Unit and e2e tests use [Jest](https://jestjs.io/). To run them:
 npm run test
 ```
 
-By default, Jest will load `.env.test` for tests. Make sure your test database is configured and accessible.
-
+By default, Jest will load `.env.test` for tests. Make sure your test database is configured and
+accessible.
 
 ---
 
@@ -155,7 +175,8 @@ http://localhost:3000/api/docs
 
 ## 🧭 Commit Convention
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) in English for traceability and version control. Examples:
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) in English for
+traceability and version control. Examples:
 
 ```bash
 feat(AFS-101): add user registration endpoint
@@ -166,7 +187,9 @@ fix(AFS-102): correct token expiration logic
 
 ## 📦 Release Strategy
 
-Releases are published from the `main` branch via GitHub Actions. The team works on `develop` and merges manually when ready to publish. The release type (`patch`, `minor`, `major`) is selected manually.
+Releases are published from the `main` branch via GitHub Actions. The team works on `develop` and
+merges manually when ready to publish. The release type (`patch`, `minor`, `major`) is selected
+manually.
 
 ---
 

@@ -3,13 +3,13 @@ import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TenantAuthController } from './tenant-auth.controller';
-import { TenantJwtStrategy } from './tenant-jwt.strategy';
-import { UserTenant } from '../users/user-tenant.entity';
-import { Tenant } from '../../platform/tenants/tenant.entity';
+import { TenantJwtStrategy } from './strategies/tenant-jwt.strategy';
+import { Tenant } from '../../platform/tenants/entities/tenant.entity';
 import { TenantModule } from '../tenant.module';
 import { TenantService } from '../../platform/tenants/services/tenant.service';
 import { TenantConnectionService } from '../../platform/tenants/services/tenant-connection.service';
 import { TenantAuthService } from './tenant-auth.service';
+import { TenantUser } from './users/tenant-user.entity';
 
 /**
  * Module for tenant authentication functionality.
@@ -17,7 +17,7 @@ import { TenantAuthService } from './tenant-auth.service';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Tenant, UserTenant]),
+    TypeOrmModule.forFeature([Tenant, TenantUser]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

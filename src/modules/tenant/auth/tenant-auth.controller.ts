@@ -9,21 +9,22 @@ import {
   Request,
   ForbiddenException,
 } from '@nestjs/common';
-import { TenantJwtAuthGuard } from './guards/tenant-jwt-auth.guard';
-import { RolesGuard } from '../../platform/roles/guards/roles.guard';
-import { Roles } from '../../platform/roles/decorators/roles.decorator';
-import { UserRoles } from '@orelnaranjod/flex-shared-lib';
+import { PlatformRole, TenantRole } from '@definitions';
 import { TenantAuthService } from './tenant-auth.service';
 import { LoginRequestDto } from './dtos/login-request.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { RegisterDto } from './dtos/register.dto';
+import { TenantRoles } from './roles/decorators/tenant-roles.decorator';
+import { PlatformRoles } from '../../platform/auth/roles/decorators/platform-roles.decorator';
+import { TenantAuthGuard } from './guards/tenant-auth.guard';
+import { TenantPermissionGuard } from './permissions/guards/tenant-permission.guard';
 
 /**
  * Controller for tenant authentication operations.
  * @class TenantAuthController
  * @description /auth/tenant/:Roles:Id.
  */
-@Controller('auth/tenant/:tenantId')
+@Controller('/tenant/auth/:tenantId')
 export class TenantAuthController {
   /**
    * Creates an instance of TenantAuthController.
@@ -57,8 +58,9 @@ export class TenantAuthController {
    * Roles: admin, super_admin.
    */
   @Post('register')
-  @UseGuards(TenantJwtAuthGuard, RolesGuard)
-  @Roles(UserRoles.ADMIN, UserRoles.SUPER_ADMIN)
+  @UseGuards(TenantAuthGuard, TenantPermissionGuard)
+  @TenantRoles(TenantRole.ADMIN)
+  @PlatformRoles(PlatformRole.SUPER_ADMIN)
   async register(
     @Param('tenantId') tenantId: string,
     @Body() registerDto: RegisterDto,

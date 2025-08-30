@@ -3,12 +3,12 @@ import { AuthGuard } from '@nestjs/passport';
 import { Observable } from 'rxjs';
 
 /**
- * Guard for tenant JWT authentication.
- * @class TenantJwtAuthGuard
+ * Guard for tenant authentication.
+ * @class TenantAuthGuard
  * @augments AuthGuard('tenant-jwt')
  */
 @Injectable()
-export class TenantJwtAuthGuard extends AuthGuard('tenant-jwt') {
+export class TenantAuthGuard extends AuthGuard('tenant-jwt') {
   /**
    * Overrides canActivate to handle public routes.
    * @param {ExecutionContext} context - Execution context.

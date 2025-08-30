@@ -3,10 +3,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantService } from './services/tenant.service';
 import { TenantController } from './tenant.controller';
-import { Tenant } from './tenant.entity';
+import { Tenant } from './entities/tenant.entity';
 import { TenantConnectionService } from './services/tenant-connection.service';
 import { TenantAuthService } from '../../tenant/auth/tenant-auth.service';
-import { UserTenant } from '../../tenant/users/user-tenant.entity';
+import { TenantUser } from '../../tenant/auth/users/tenant-user.entity';
 
 /**
  * Module for tenant management functionality.
@@ -14,7 +14,7 @@ import { UserTenant } from '../../tenant/users/user-tenant.entity';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Tenant, UserTenant]),
+    TypeOrmModule.forFeature([Tenant, TenantUser]),
     JwtModule.register({
       secret: 'tenant-secret-key',
       signOptions: { expiresIn: '1h' },

@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { CreateTenantDto } from '../dtos/create-tenant.dto';
 import { UpdateTenantDto } from '../dtos/update-tenant.dto';
-import { Tenant } from '../tenant.entity';
+import { Tenant } from '../entities/tenant.entity';
 import { TenantResponseDto } from '../dtos/tenant-response.dto';
 
 /**
@@ -182,6 +182,28 @@ export class TenantService {
     }
 
     await this.tenantRepository.update(id, { active: false });
+  }
+
+  /**
+   * Restores a previously deactivated tenant (platform admin only).
+   * @param {string} tenantId - ID of the tenant to restore.
+   * @returns {Promise<void>}
+   * @description PATCH /:tenantId/restore.
+   * Roles: super_admin, admin.
+   */
+  async restore(tenantId: string): Promise<void> {
+    await this.tenantRepository.update(tenantId, { active: true });
+  }
+
+  /**
+   * Deletes a tenant (platform admin only).
+   * @param {string} tenantId - ID of the tenant to delete.
+   * @returns {Promise<void>}
+   * @description DELETE /:tenantId.
+   * Roles: super_admin, admin.
+   */
+  async delete(tenantId: string): Promise<void> {
+    await this.tenantRepository.delete(tenantId);
   }
 
   /**

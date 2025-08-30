@@ -18,7 +18,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TenantService } from '../../platform/tenants/services/tenant.service';
 import { TenantConnectionService } from '../../platform/tenants/services/tenant-connection.service';
-import { UserTenant } from '../users/user-tenant.entity';
+import { TenantUser } from './users/tenant-user.entity';
 
 /**
  * Service responsible for tenant authentication operations.
@@ -34,8 +34,8 @@ export class TenantAuthService {
    * @param {TenantConnectionService} tenantConnectionService - Tenant connection service.
    */
   constructor(
-    @InjectRepository(UserTenant)
-    private readonly userRepository: Repository<UserTenant>,
+    @InjectRepository(TenantUser)
+    private readonly userRepository: Repository<TenantUser>,
     private readonly jwtService: JwtService,
     private readonly tenantService: TenantService,
     private readonly tenantConnectionService: TenantConnectionService
@@ -62,7 +62,7 @@ export class TenantAuthService {
     if (!schemaName) {
       throw new ForbiddenException('Tenant schema name is missing');
     }
-    const userRepository = await this.tenantConnectionService.getRepository(schemaName, UserTenant);
+    const userRepository = await this.tenantConnectionService.getRepository(schemaName, TenantUser);
 
     // Check user count
     const userCount = await userRepository.count();
@@ -82,7 +82,7 @@ export class TenantAuthService {
     // Create user in the tenant schema
     const user = userRepository.create({
       ...registerDto,
-    }) as UserTenant;
+    }) as TenantUser;
     const savedUser = await userRepository.save(user);
 
     return this.generateTokens(savedUser, tenantId);
@@ -106,7 +106,7 @@ export class TenantAuthService {
 
     // Get repository for the specific tenant schema
     const schemaName: string = (tenant as any).schemaName ?? (tenant as any).schema ?? '';
-    const userRepository = await this.tenantConnectionService.getRepository(schemaName, UserTenant);
+    const userRepository = await this.tenantConnectionService.getRepository(schemaName, TenantUser);
 
     const user = await this.validateUser(userRepository, loginDto.email, loginDto.password);
 
@@ -133,7 +133,7 @@ export class TenantAuthService {
     userRepository: any,
     email: string,
     password: string
-  ): Promise<UserTenant | null> {
+  ): Promise<TenantUser | null> {
     const user = await userRepository.findOne({
       where: { email, active: true },
     });
@@ -152,7 +152,7 @@ export class TenantAuthService {
    * @returns {Promise<TokenResponseDto>} Authentication tokens.
    * @private
    */
-  private async generateTokens(user: UserTenant, tenantId: string): Promise<TokenResponseDto> {
+  private async generateTokens(user: TenantUser, tenantId: string): Promise<TokenResponseDto> {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
@@ -173,23 +173,23 @@ export class TenantAuthService {
   /**
    * Validates JWT payload against the tenant schema.
    * @param {JwtPayload} payload - JWT payload.
-   * @returns {Promise<UserTenant>} User entity.
+   * @returns {Promise<TenantUser>} User entity.
    */
-  async validatePayload(payload: JwtPayload): Promise<UserTenant> {
+  async validatePayload(payload: JwtPayload): Promise<TenantUser> {
     if (!payload.tenantId) {
       throw new UnauthorizedException('Tenant ID is missing in token payload');
     }
     const tenant = await this.tenantService.findOne(String(payload.tenantId));
     const schemaName: string = (tenant as any).schemaName ?? (tenant as any).schema ?? '';
-    const userRepository = await this.tenantConnectionService.getRepository<UserTenant>(
+    const userRepository = await this.tenantConnectionService.getRepository<TenantUser>(
       schemaName,
-      UserTenant
+      TenantUser as new () => TenantUser
     );
 
     const user = await userRepository.findOne({
       where: { id: payload.sub, active: true },
     });
-    if (!user || !(user instanceof UserTenant)) {
+    if (!user || !(user instanceof TenantUser)) {
       throw new UnauthorizedException('User not found or inactive');
     }
     return user;
@@ -226,7 +226,7 @@ export class TenantAuthService {
     tenantId: string,
     userId: string,
     updateData: Partial<RegisterDto>
-  ): Promise<UserTenant> {
+  ): Promise<TenantUser> {
     const user = await this.userRepository.findOne({
       where: { id: userId, tenantId: tenantId },
     });

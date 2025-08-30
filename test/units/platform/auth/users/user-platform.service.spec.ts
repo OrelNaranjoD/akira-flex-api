@@ -1,19 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { UserPlatformService } from '../../../../src/modules/platform/users/user-platform.service';
-import { UserPlatform } from '../../../../src/modules/platform/users/user-platform.entity';
-import { CreateUserPlatformDto } from '../../../../src/modules/platform/users/dtos/create-user-platform.dto';
-import { UpdateUserPlatformDto } from '../../../../src/modules/platform/users/dtos/update-user-platform.dto';
 import { RegisterDto, UserRoles } from '@orelnaranjod/flex-shared-lib';
+import { PlatformUserService } from '@platform/auth/users/platform-user.service';
+import { PlatformUser } from '@platform/auth/users/entities/platform-user.entity';
+import { PlatformRole } from '@platform/auth/roles/entities/platform-role.entity';
+import { CreatePlatformUserDto } from '@platform/auth/users/dtos/create-platform-user.dto';
+import { UpdatePlatformUserDto } from '@platform/auth/users/dtos/update-platform-user.dto';
 
 /**
- * Unit tests for UserPlatformService
+ * Unit tests for PlatformUserService
  * Covers: createUser, registerUser, findAll, findOne, update, remove.
  */
-describe('UserPlatformService', () => {
-  let service: UserPlatformService;
+describe('PlatformUserService', () => {
+  let service: PlatformUserService;
   let repo: any;
+  let roleRepo: any;
 
   beforeEach(async () => {
     repo = {
@@ -22,16 +24,21 @@ describe('UserPlatformService', () => {
       save: jest.fn(),
       find: jest.fn(),
     };
+    roleRepo = { findOne: jest.fn() };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        UserPlatformService,
+        PlatformUserService,
         {
-          provide: getRepositoryToken(UserPlatform),
+          provide: getRepositoryToken(PlatformUser),
           useValue: repo,
+        },
+        {
+          provide: getRepositoryToken(PlatformRole),
+          useValue: roleRepo,
         },
       ],
     }).compile();
-    service = module.get<UserPlatformService>(UserPlatformService);
+    service = module.get<PlatformUserService>(PlatformUserService);
   });
 
   /**
@@ -40,7 +47,7 @@ describe('UserPlatformService', () => {
   describe('createUser', () => {
     it('should create a user if email does not exist', async () => {
       repo.findOne.mockResolvedValue(null);
-      const dto: CreateUserPlatformDto = {
+      const dto: CreatePlatformUserDto = {
         email: 'test@test.com',
         password: '123',
         firstName: 'Test',
@@ -56,7 +63,7 @@ describe('UserPlatformService', () => {
     });
     it('should throw ConflictException if email already exists', async () => {
       repo.findOne.mockResolvedValue({ email: 'test@test.com' });
-      const dto: CreateUserPlatformDto = {
+      const dto: CreatePlatformUserDto = {
         email: 'test@test.com',
         password: '123',
         firstName: 'Test',
@@ -133,8 +140,8 @@ describe('UserPlatformService', () => {
   describe('update', () => {
     it('should update the user', async () => {
       const user = { id: '1', firstName: 'Old' };
-      const dto: UpdateUserPlatformDto = { firstName: 'New' };
-      jest.spyOn(service, 'findOne').mockResolvedValue(user as UserPlatform);
+      const dto: UpdatePlatformUserDto = { firstName: 'New' };
+      jest.spyOn(service, 'findOne').mockResolvedValue(user as PlatformUser);
       repo.save.mockResolvedValue({ ...user, ...dto });
       await expect(service.update('1', dto)).resolves.toEqual({ ...user, ...dto });
       expect(repo.save).toHaveBeenCalledWith({ ...user, ...dto });
@@ -147,7 +154,7 @@ describe('UserPlatformService', () => {
   describe('remove', () => {
     it('should deactivate the user (soft delete)', async () => {
       const user = { id: '1', active: true };
-      jest.spyOn(service, 'findOne').mockResolvedValue(user as UserPlatform);
+      jest.spyOn(service, 'findOne').mockResolvedValue(user as PlatformUser);
       repo.save.mockResolvedValue({ ...user, active: false });
       await service.remove('1');
       expect(user.active).toBe(false);

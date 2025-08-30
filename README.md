@@ -67,8 +67,9 @@ akira-flex-api/
 │   ├── modules/              # Domain-specific business logic
 │   │   ├── platform/         # Platform-side modules (admin context)
 │   │   │   ├── auth/
-│   │   │   ├── users/
-│   │   │   ├── roles/
+│   │   │   │   ├── users/
+│   │   │   │   ├── roles/
+│   │   │   │   └── permissions/
 │   │   │   ├── organizations/
 │   │   │   ├── settings/
 │   │   │   ├── tenants/
@@ -76,8 +77,9 @@ akira-flex-api/
 │   │   │   └── status/
 │   │   ├── tenant/           # Tenant-side modules (client context)
 │   │   │   ├── auth/
-│   │   │   ├── users/
-│   │   │   ├── roles/
+│   │   │   │   ├── users/
+│   │   │   │   ├── roles/
+│   │   │   │   └── permissions/
 │   │   │   ├── organizations/
 │   │   │   ├── projects/
 │   │   │   ├── workflows/

@@ -5,14 +5,14 @@ export default {
   transform: {
     '^.+\\.(t|j)s$': ['ts-jest'],
   },
-  collectCoverageFrom: ['**/*.(t|j)s'],
+  collectCoverageFrom: ['src/**/*.(t|j)s', 'test/**/*.(t|j)s', '!test/e2e/**'],
   coverageDirectory: './coverage',
-  coveragePathIgnorePatterns: ['/node_modules/'],
+  coveragePathIgnorePatterns: ['/node_modules/', '/dist/'],
   moduleNameMapper: {
     '^@core/(.*)$': '<rootDir>/src/core/$1',
     '^@definitions$': '<rootDir>/src/core/definitions/definitions.ts',
-    '^@modules/(.*)$': '<rootDir>/src/modules/$1',
     '^@platform/(.*)$': '<rootDir>/src/modules/platform/$1',
+    '^@tenant/(.*)$': '<rootDir>/src/modules/tenant/$1',
   },
   testMatch: ['<rootDir>/test/**/*.spec.ts', '<rootDir>/src/**/__tests__/*.spec.ts'],
 };

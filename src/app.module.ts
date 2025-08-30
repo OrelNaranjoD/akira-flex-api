@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { PlatformModule } from './modules/platform/platform.module';
 import { TenantModule } from './modules/tenant/tenant.module';
+import { StatusModule } from './core/status/status.module';
 import { DatabaseModule } from './core/database/database.module';
 import { InitialSeeder } from './core/database/seeds/initial.seeder';
 
@@ -43,6 +44,7 @@ import { InitialSeeder } from './core/database/seeds/initial.seeder';
     DatabaseModule,
     PlatformModule,
     TenantModule,
+    StatusModule,
   ],
 })
 export class AppModule implements OnModuleInit {

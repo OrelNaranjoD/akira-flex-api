@@ -2,10 +2,9 @@ import { Module } from '@nestjs/common';
 import { StatusController } from './status.controller';
 
 /**
- * Status module for API status checks.
+ * Module exposing a simple /status endpoint used in e2e tests.
  */
 @Module({
   controllers: [StatusController],
-  providers: [],
 })
 export class StatusModule {}

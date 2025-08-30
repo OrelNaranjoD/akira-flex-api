@@ -6,6 +6,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { StatusModule } from './core/status/status.module';
 import { DatabaseModule } from './core/database/database.module';
 import { InitialSeeder } from './core/database/seeds/initial.seeder';
+import { AuditModule } from './core/audit/audit.module';
 
 /**
  * Main application module for Akira Flex API.
@@ -42,6 +43,7 @@ import { InitialSeeder } from './core/database/seeds/initial.seeder';
       },
     }),
     DatabaseModule,
+    AuditModule,
     PlatformModule,
     TenantModule,
     StatusModule,

@@ -8,7 +8,7 @@ import { Observable } from 'rxjs';
  * @augments AuthGuard('platform-auth')
  */
 @Injectable()
-export class PlatformAuthGuard extends AuthGuard('platform-auth') {
+export class PlatformAuthGuard extends AuthGuard('platform-jwt') {
   /**
    * Overrides canActivate to handle public routes.
    * @param {ExecutionContext} context - Execution context.

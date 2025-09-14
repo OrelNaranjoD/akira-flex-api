@@ -1,6 +1,8 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { PlatformModule } from './modules/platform/platform.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { StatusModule } from './core/status/status.module';
@@ -17,6 +19,10 @@ import { AuditModule } from './core/audit/audit.module';
       isGlobal: true,
       envFilePath: '.env',
       expandVariables: true,
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+      serveRoot: '/',
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

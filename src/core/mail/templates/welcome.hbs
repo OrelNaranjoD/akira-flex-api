@@ -1,0 +1,90 @@
+<html>
+  <head>
+    <meta charset='UTF-8' />
+    <title>Bienvenido a AkiraFlex</title>
+    <link
+      href='https://fonts.googleapis.com/css?family=Poppins:400,600&display=swap'
+      rel='stylesheet'
+    />
+    <style>
+      body {
+        background: linear-gradient(135deg, #e3f0ff 0%, #f6f8fa 100%);
+        font-family: 'Poppins', Arial, sans-serif;
+        color: #1a3d7c !important;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 480px;
+        margin: 20px auto 20px auto;
+        background: #fff;
+        border-radius: 18px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+        padding: 48px 32px 40px 32px;
+        text-align: center;
+        border: 1.5px solid #e3f0ff;
+      }
+      .logo {
+        margin-bottom: 28px;
+      }
+      h1 {
+        color: #005491;
+        font-size: 2.1rem;
+        margin-bottom: 14px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+      }
+      .btn {
+        display: inline-block;
+        margin-top: 28px;
+        padding: 14px 36px;
+        background: linear-gradient(90deg, #0083b1 0%, #55c1dd 100%);
+        color: #fff !important;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1.05rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        transition: background 0.2s;
+        border: none;
+      }
+      .btn:hover {
+        background: #005491;
+      }
+      .footer {
+        margin-top: 36px;
+        font-size: 0.95rem;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='container'>
+      <div
+        class='logo'
+        style='display: flex; align-items: center; justify-content: center; gap: 12px;'
+      >
+        <img
+          src='https://s3.akirasoftware.cl/logotype.png'
+          alt='AkiraFlex Logo'
+          width='40'
+          height='40'
+          style='margin-right: 5px; vertical-align: middle;'
+        />
+        <span
+          style="font-size: 2rem; font-weight: bold; color: #005491; font-family: 'Poppins', Arial, sans-serif;"
+        >AkiraFlex</span>
+      </div>
+      <h1>Bienvenido, {{name}}!</h1>
+      <p>Gracias por registrarte en <b>AkiraFlex</b>.</p>
+      <p>Por favor verifica tu correo haciendo clic en el siguiente botón:</p>
+      <a class='btn' href='{{verificationUrl}}'>Verificar correo</a>
+      <div class='footer'>
+        Si no reconoces este registro, ignora este mensaje.<br />
+        &copy;
+        {{year}}
+        AkiraFlex
+      </div>
+    </div>
+  </body>
+</html>

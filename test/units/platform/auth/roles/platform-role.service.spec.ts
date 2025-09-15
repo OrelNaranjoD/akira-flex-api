@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { PlatformRole } from '@platform/auth/roles/entities/platform-role.entity';
-import { CreatePlatformRoleDto } from '@platform/auth/roles/dtos/create-platform-role.dto';
-import { UpdatePlatformRoleDto } from '@platform/auth/roles/dtos/update-platform-role.dto';
+import { PlatformRole } from '@platform/auth/platform-roles/entities/platform-role.entity';
+import { CreatePlatformRoleDto } from '@platform/auth/platform-roles/dtos/create-platform-role.dto';
+import { UpdatePlatformRoleDto } from '@platform/auth/platform-roles/dtos/update-platform-role.dto';
 import { NotFoundException } from '@nestjs/common';
-import { PlatformRoleService } from '@platform/auth/roles/platform-role.service';
+import { PlatformRoleService } from '@platform/auth/platform-roles/platform-role.service';
 
 describe('PlatformRoleService', () => {
   let service: PlatformRoleService;

@@ -3,7 +3,7 @@ import { TenantRoleService } from './tenant-role.service';
 import { CreateTenantRoleDto } from './dtos/create-tenant-role.dto';
 import { UpdateTenantRoleDto } from './dtos/update-tenant-role.dto';
 import { TenantPermissions } from './decorators/tenant-permissions.decorator';
-import { TenantPermissionGuard } from '../permissions/guards/tenant-permission.guard';
+import { TenantPermissionGuard } from '../tenant-permissions/guards/tenant-permission.guard';
 
 /**
  * Controller for managing tenant-level roles and permissions.

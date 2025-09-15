@@ -16,8 +16,8 @@ import { UpdateTenantDto } from './dtos/update-tenant.dto';
 import { TenantResponseDto } from './dtos/tenant-response.dto';
 import { TenantAuthService } from '../../tenant/auth/tenant-auth.service';
 import { PlatformAuthGuard } from '../auth/guards/platform-auth.guard';
-import { RequirePlatformPermission } from '../auth/permissions/decorators/platform-permissions.decorator';
-import { PlatformPermissionGuard } from '../auth/permissions/guards/platform-permission.guard';
+import { RequirePlatformPermission } from '../auth/platform-permissions/decorators/platform-permissions.decorator';
+import { PlatformPermissionGuard } from '../auth/platform-permissions/guards/platform-permission.guard';
 import { PlatformPermission } from '@definitions';
 
 /**

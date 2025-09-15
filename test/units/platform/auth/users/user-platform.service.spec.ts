@@ -2,11 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { RegisterDto, UserRoles } from '@orelnaranjod/flex-shared-lib';
-import { PlatformUserService } from '@platform/auth/users/platform-user.service';
-import { PlatformUser } from '@platform/auth/users/entities/platform-user.entity';
-import { PlatformRole } from '@platform/auth/roles/entities/platform-role.entity';
-import { CreatePlatformUserDto } from '@platform/auth/users/dtos/create-platform-user.dto';
-import { UpdatePlatformUserDto } from '@platform/auth/users/dtos/update-platform-user.dto';
+import { PlatformUserService } from '@platform/auth/platform-users/platform-user.service';
+import { PlatformUser } from '@platform/auth/platform-users/entities/platform-user.entity';
+import { PlatformRole } from '@platform/auth/platform-roles/entities/platform-role.entity';
+import { CreatePlatformUserDto } from '@platform/auth/platform-users/dtos/create-platform-user.dto';
+import { UpdatePlatformUserDto } from '@platform/auth/platform-users/dtos/update-platform-user.dto';
 
 /**
  * Unit tests for PlatformUserService

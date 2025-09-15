@@ -1,21 +1,42 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Patch,
+  Query,
+} from '@nestjs/common';
 import { PlatformAuthService } from './platform-auth.service';
 import { RegisterDto } from './dtos/register.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { LoginRequestDto } from './dtos/login-request.dto';
 import { PlatformAuthGuard } from './guards/platform-auth.guard';
-import { PlatformPermissionGuard } from './permissions/guards/platform-permission.guard';
-import { RequirePlatformPermission } from './permissions/decorators/platform-permissions.decorator';
-//@TODO Fix import to shared lib.
-import { PlatformPermission } from '@definitions';
+import { PlatformPermissionGuard } from './platform-permissions/guards/platform-permission.guard';
+import { RequirePlatformPermission } from './platform-permissions/decorators/platform-permissions.decorator';
+import { PlatformPermission, RegisterResponseDto } from '@definitions';
+import { Public } from '../../../core/decorators/public.decorator';
 
 /**
  * Controller for platform authentication operations.
  * @class PlatformAuthController
- * @description /platform/auth.
+ * @description /auth.
  */
-@Controller('platform/auth')
+@Controller('/auth')
 export class PlatformAuthController {
+  /**
+   * Resends the email verification link to an existing user.
+   * @param email User email.
+   * @returns {Promise<RegisterResponseDto>} User data and new token.
+   * @description POST /resend-verification
+   * Publicly accessible endpoint.
+   */
+  @Public()
+  @Post('resend-verification')
+  async resendVerification(@Body('email') email: string): Promise<RegisterResponseDto> {
+    return await this.authService.resendVerificationEmail(email);
+  }
   /**
    * Creates an instance of PlatformAuthController.
    * @param {PlatformAuthService} authService - Platform authentication service.
@@ -29,11 +50,25 @@ export class PlatformAuthController {
    * @description POST /register.
    * Only accessible by super_admin role.
    */
-  @Post('register')
+  @Post('platform/register')
   @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.AUTH_REGISTER)
-  async register(@Body() registerDto: RegisterDto): Promise<TokenResponseDto> {
-    return this.authService.register(registerDto);
+  async registerPlatformUser(@Body() registerDto: RegisterDto): Promise<TokenResponseDto> {
+    return this.authService.registerPlatformUser(registerDto);
+  }
+
+  /**
+   * Registers a new user.
+   * @param {RegisterDto} registerDto - User registration data.
+   * @returns {Promise<RegisterResponseDto>} Registration result.
+   * @description POST /register.
+   * Publicly accessible endpoint.
+   * Sends a verification email upon successful registration.
+   */
+  @Public()
+  @Post('register')
+  async registerUser(@Body() registerDto: RegisterDto): Promise<RegisterResponseDto> {
+    return this.authService.registerUser(registerDto);
   }
 
   /**
@@ -46,5 +81,48 @@ export class PlatformAuthController {
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginRequestDto: LoginRequestDto): Promise<TokenResponseDto> {
     return this.authService.login(loginRequestDto);
+  }
+
+  /**
+   * Verifies a email address.
+   * @param {string} token - Verification token.
+   * @returns {Promise<TokenResponseDto>} New authentication tokens.
+   * @description PATCH /verify-email?token=...
+   */
+  @Patch('verify-email')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(@Query('token') token: string): Promise<TokenResponseDto> {
+    return this.authService.verifyEmail(token);
+  }
+
+  /**
+   * Sends a recovery password email.
+   * @param {string} email - User email.
+   * @returns {Promise<RegisterResponseDto>} Result of the operation.
+   * @description POST /forgot-password.
+   * Publicly accessible endpoint.
+   */
+  @Public()
+  @Post('forgot-password')
+  async forgotPassword(@Body('email') email: string): Promise<RegisterResponseDto> {
+    return this.authService.forgotPassword(email);
+  }
+
+  /**
+   * Reset password using a valid token.
+   * @param token The password reset token.
+   * @param password The new password.
+   * @returns {Promise<TokenResponseDto>} New authentication tokens.
+   * @description PATCH /reset-password?token=...
+   * Publicly accessible endpoint.
+   */
+  @Public()
+  @Patch('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Query('token') token: string,
+    @Body('password') password: string
+  ): Promise<TokenResponseDto> {
+    return this.authService.resetPassword(token, password);
   }
 }

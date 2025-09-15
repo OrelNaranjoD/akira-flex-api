@@ -54,6 +54,7 @@
     "typeorm": "^0.3.26"
   },
   "devDependencies": {
+    "conventional-commits-parser": "^6.2.0",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@eslint/eslintrc": "^3.3.1",

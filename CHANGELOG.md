@@ -1,3 +1,17 @@
+# [0.2.0](https://github.com/OrelNaranjoD/akira-flex-api/compare/v0.1.0...v0.2.0) (2025-08-30)
+
+
+### Bug Fixes
+
+* **I-003:** add audit module and initial permissions/roles seeder ([36a244f](https://github.com/OrelNaranjoD/akira-flex-api/commit/36a244fe53ebca4cf9c20f4a87c3ef7c293ba7e1))
+
+
+### Features
+
+* **test:** mock AuditService in e2e tests for isolation ([51737bb](https://github.com/OrelNaranjoD/akira-flex-api/commit/51737bbd8f21e9afaa921c94d64355f26ee0010a))
+
+
+
 # [0.1.0](https://github.com/OrelNaranjoD/akira-flex-api/compare/v0.0.5...v0.1.0) (2025-08-30)
 
 

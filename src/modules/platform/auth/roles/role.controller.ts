@@ -1,34 +1,34 @@
 import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards } from '@nestjs/common';
-import { PlatformRoleService } from './platform-role.service';
-import { RequirePlatformPermission } from '../permissions/decorators/platform-permissions.decorator';
+import { RoleService } from './role.service';
+import { RequirePlatformPermission } from '../platform-permissions/decorators/platform-permissions.decorator';
 import { PlatformAuthGuard } from '../guards/platform-auth.guard';
-import { PlatformPermissionGuard } from '../permissions/guards/platform-permission.guard';
-import { CreatePlatformRoleDto } from './dtos/create-platform-role.dto';
-import { UpdatePlatformRoleDto } from './dtos/update-platform-role.dto';
+import { PlatformPermissionGuard } from '../platform-permissions/guards/platform-permission.guard';
+import { CreateRoleDto } from './dtos/create-role.dto';
+import { UpdateRoleDto } from './dtos/update-role.dto';
 import { PlatformPermission } from '@definitions';
 
 /**
- * Controller for managing platform-level roles and permissions.
+ * Controller for managing -level roles and permissions.
  */
-@Controller('platform/roles')
+@Controller('/roles')
 @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
-export class PlatformRoleController {
-  constructor(private readonly service: PlatformRoleService) {}
+export class RoleController {
+  constructor(private readonly service: RoleService) {}
 
   /**
-   * Creates a new platform role.
-   * @param dto Data for creating the platform role.
-   * @returns The created platform role.
+   * Creates a new  role.
+   * @param dto Data for creating the  role.
+   * @returns The created  role.
    */
   @RequirePlatformPermission(PlatformPermission.ROLE_CREATE)
   @Post()
-  create(@Body() dto: CreatePlatformRoleDto) {
+  create(@Body() dto: CreateRoleDto) {
     return this.service.create(dto);
   }
 
   /**
-   * Returns all platform roles.
-   * @returns Array of platform roles.
+   * Returns all  roles.
+   * @returns Array of  roles.
    */
   @RequirePlatformPermission(PlatformPermission.ROLE_VIEW_ALL)
   @Get()
@@ -37,9 +37,9 @@ export class PlatformRoleController {
   }
 
   /**
-   * Returns a platform role by id.
+   * Returns a  role by id.
    * @param id Role identifier.
-   * @returns The found platform role.
+   * @returns The found  role.
    */
   @RequirePlatformPermission(PlatformPermission.ROLE_VIEW)
   @Get(':id')
@@ -48,21 +48,21 @@ export class PlatformRoleController {
   }
 
   /**
-   * Updates a platform role.
+   * Updates a  role.
    * @param id Role identifier.
-   * @param dto Data for updating the platform role.
-   * @returns The updated platform role.
+   * @param dto Data for updating the  role.
+   * @returns The updated  role.
    */
   @RequirePlatformPermission(PlatformPermission.ROLE_UPDATE)
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdatePlatformRoleDto) {
+  update(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
     return this.service.update(id, dto);
   }
 
   /**
-   * Disable a platform role.
+   * Disable a  role.
    * @param id Role identifier.
-   * @returns The disabled platform role.
+   * @returns The disabled  role.
    */
   @RequirePlatformPermission(PlatformPermission.ROLE_DISABLE)
   @Put(':id/disable')
@@ -71,9 +71,9 @@ export class PlatformRoleController {
   }
 
   /**
-   * Restores a platform role.
+   * Restores a  role.
    * @param id Role identifier.
-   * @returns The restored platform role.
+   * @returns The restored  role.
    */
   @RequirePlatformPermission(PlatformPermission.ROLE_RESTORE)
   @Put(':id/restore')
@@ -82,9 +82,9 @@ export class PlatformRoleController {
   }
 
   /**
-   * Removes a platform role.
+   * Removes a  role.
    * @param id Role identifier.
-   * @returns The removed platform role.
+   * @returns The removed  role.
    */
   @RequirePlatformPermission(PlatformPermission.ROLE_DELETE)
   @Delete(':id')

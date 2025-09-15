@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { PlatformUser } from '../../../modules/platform/auth/users/entities/platform-user.entity';
-import { PlatformPermission } from '../../../modules/platform/auth/permissions/entities/platform-permission.entity';
-import { PlatformRole } from '../../../modules/platform/auth/roles/entities/platform-role.entity';
+import { PlatformUser } from '../../../modules/platform/auth/platform-users/entities/platform-user.entity';
+import { PlatformPermission } from '../../../modules/platform/auth/platform-permissions/entities/platform-permission.entity';
+import { PlatformRole } from '../../../modules/platform/auth/platform-roles/entities/platform-role.entity';
+import { Role } from '../../../modules/platform/auth/roles/entities/role.entity';
+import { Role as RoleEnum } from '@definitions';
 
 /**
  * Seeder that creates the initial platform administrator user in platform_users if the table is empty.
@@ -51,6 +53,14 @@ export class InitialSeeder {
       ];
 
       const savedPerms = await permissionRepo.save(perms);
+
+      // Create roles and assign permissions business roles for tenant
+      const businessRoleRepo = this.dataSource.getRepository(Role);
+      const roles = Object.values(RoleEnum).map((roleName) => ({
+        name: roleName,
+        permissions: roleName === 'OWNER' ? savedPerms : [],
+      }));
+      await businessRoleRepo.save(roles);
 
       // Create roles and assign permissions
       const superAdminRole = roleRepo.create({

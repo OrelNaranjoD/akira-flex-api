@@ -1,15 +1,16 @@
 import { Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { PlatformPermission } from '../../permissions/entities/platform-permission.entity';
+import { Permission } from '../../permissions/entities/permission.entity';
+import { RoleEntity } from '@definitions';
 
 /**
- * Entity representing a platform-level role.
- * Used for RBAC at the platform level.
+ * Entity representing a role.
+ * Used for RBAC at the role level.
  * @property id Unique identifier for the role.
  * @property name Unique name of the role.
  * @property permissions Array of permission strings assigned to the role.
  */
 @Entity({ name: 'roles', schema: 'public' })
-export class PlatformRole {
+export class Role implements RoleEntity {
   /**
    * Unique identifier for the role.
    */
@@ -43,11 +44,11 @@ export class PlatformRole {
   /**
    * Array of permissions assigned to the role.
    */
-  @ManyToMany(() => PlatformPermission, { eager: true })
+  @ManyToMany(() => Permission, { eager: true })
   @JoinTable({
     name: 'role_permissions',
     joinColumn: { name: 'role_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
   })
-  permissions: PlatformPermission[];
+  permissions: Permission[];
 }

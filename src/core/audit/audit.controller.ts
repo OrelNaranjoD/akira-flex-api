@@ -1,7 +1,7 @@
 import { Controller, Get, Query, UseGuards, Param } from '@nestjs/common';
 import { AuditService } from './audit.service';
 import { AuditLog } from './audit-log.entity';
-import { PlatformPermissionGuard } from '../../modules/platform/auth/permissions/guards/platform-permission.guard';
+import { PlatformPermissionGuard } from '../../modules/platform/auth/platform-permissions/guards/platform-permission.guard';
 import { PlatformAuthGuard } from '../../modules/platform/auth/guards/platform-auth.guard';
 import { RequirePlatformPermission } from './decorators/platform-permissions.decorator';
 import { PlatformPermission } from '../definitions/definitions';

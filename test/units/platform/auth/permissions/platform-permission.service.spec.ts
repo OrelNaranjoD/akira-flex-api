@@ -1,9 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { PlatformPermissionService } from '@platform/auth/permissions/platform-permission.service';
-import { PlatformPermission } from '@platform/auth/permissions/entities/platform-permission.entity';
+import { PlatformPermissionService } from '@platform/auth/platform-permissions/platform-permission.service';
+import { PlatformPermission } from '@platform/auth/platform-permissions/entities/platform-permission.entity';
 import { NotFoundException } from '@nestjs/common';
-import { CreatePlatformPermissionDto } from '@platform/auth/permissions/dtos/create-platform-permission.dto';
+import { CreatePlatformPermissionDto } from '@platform/auth/platform-permissions/dtos/create-platform-permission.dto';
 
 describe('PlatformPermissionService', () => {
   let service: PlatformPermissionService;

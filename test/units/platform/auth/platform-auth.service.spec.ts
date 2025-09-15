@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { PlatformAuthService } from '@platform/auth/platform-auth.service';
-import { PlatformUser } from '@platform/auth/users/entities/platform-user.entity';
+import { PlatformUser } from '@platform/auth/platform-users/entities/platform-user.entity';
 import { LoginRequestDto } from '@platform/auth/dtos/login-request.dto';
 import { RegisterDto } from '@platform/auth/dtos/register.dto';
 

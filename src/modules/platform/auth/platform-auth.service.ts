@@ -2,13 +2,20 @@ import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { JwtPayloadType } from '@orelnaranjod/flex-shared-lib';
 import { LoginRequestDto } from './dtos/login-request.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { RegisterDto } from './dtos/register.dto';
-import { PlatformUser } from './users/entities/platform-user.entity';
-//@TODO Fix import  to shared lib.
-import { PlatformRole, JwtPayload } from '@definitions';
+import { PlatformUser } from './platform-users/entities/platform-user.entity';
+import {
+  PlatformRole,
+  JwtPayload,
+  JwtPayloadType,
+  Status,
+  RegisterResponseDto,
+  JwtEmailVerificationPayload,
+} from '@definitions';
+import { User } from './users/entities/user.entity';
+import { MailService } from '../../../core/mail/mail.service';
 
 /**
  * Service responsible for platform authentication operations.
@@ -23,15 +30,21 @@ export class PlatformAuthService {
    *
    * @module PlatformAuthService
    */
+
   /**
    * Creates an instance of PlatformAuthService.
+   * @param userPlatformRepository - Repository for platform users.
    * @param {Repository<PlatformUser>} userRepository - Repository for platform users.
    * @param {JwtService} jwtService - JWT service for token generation.
+   * @param {MailService} mailService - Service for sending emails.
    */
   constructor(
     @InjectRepository(PlatformUser)
-    private readonly userRepository: Repository<PlatformUser>,
-    private readonly jwtService: JwtService
+    private readonly userPlatformRepository: Repository<PlatformUser>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly jwtService: JwtService,
+    private readonly mailService: MailService
   ) {}
 
   /**
@@ -39,8 +52,31 @@ export class PlatformAuthService {
    * @param {RegisterDto} registerDto - User registration data.
    * @returns {Promise<TokenResponseDto>} Authentication tokens.
    * @throws {ConflictException} If user with email already exists.
+   * @description Only accessible by super_admin role.
    */
-  async register(registerDto: RegisterDto): Promise<TokenResponseDto> {
+  async registerPlatformUser(registerDto: RegisterDto): Promise<TokenResponseDto> {
+    const existingUser = await this.userPlatformRepository.findOne({
+      where: { email: registerDto.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    const user = this.userPlatformRepository.create(registerDto);
+    await this.userPlatformRepository.save(user);
+
+    return this.generateTokens(user);
+  }
+
+  /**
+   * Registers a new user.
+   * @param {RegisterDto} registerDto - User registration data.
+   * @returns {Promise<RegisterResponseDto>} Registration result.
+   * @throws {ConflictException} If user with email already exists.
+   * @description Publicly accessible endpoint.
+   */
+  async registerUser(registerDto: RegisterDto): Promise<RegisterResponseDto> {
     const existingUser = await this.userRepository.findOne({
       where: { email: registerDto.email },
     });
@@ -49,10 +85,23 @@ export class PlatformAuthService {
       throw new ConflictException('User with this email already exists');
     }
 
-    const user = this.userRepository.create(registerDto);
-    await this.userRepository.save(user);
+    const user = this.userRepository.create({
+      ...registerDto,
+      status: Status.PENDING_VERIFICATION,
+    });
+    const savedUser = await this.userRepository.save(user);
 
-    return this.generateTokens(user);
+    await this.mailService.sendVerificationEmail(
+      savedUser.email,
+      savedUser.firstName + ' ' + savedUser.lastName,
+      await this.generateEmailVerificationToken(savedUser)
+    );
+
+    return {
+      id: savedUser.id,
+      email: savedUser.email,
+      status: savedUser.status,
+    };
   }
 
   /**
@@ -68,9 +117,8 @@ export class PlatformAuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Update last login
     user.lastLogin = new Date();
-    await this.userRepository.save(user);
+    await this.userPlatformRepository.save(user);
 
     return this.generateTokens(user);
   }
@@ -83,7 +131,7 @@ export class PlatformAuthService {
    * @private
    */
   private async validateUser(email: string, password: string): Promise<PlatformUser | null> {
-    const user = await this.userRepository.findOne({
+    const user = await this.userPlatformRepository.findOne({
       where: { email, active: true },
     });
 
@@ -100,7 +148,7 @@ export class PlatformAuthService {
    * @returns {Promise<TokenResponseDto>} Authentication tokens.
    * @private
    */
-  private async generateTokens(user: PlatformUser): Promise<TokenResponseDto> {
+  private async generateTokens(user: PlatformUser | User): Promise<TokenResponseDto> {
     const permissions = user.roles
       .flatMap((role) => role.permissions.map((p) => p.code))
       .filter((value, index, self) => self.indexOf(value) === index);
@@ -116,9 +164,25 @@ export class PlatformAuthService {
 
     return {
       accessToken,
-      expiresIn: 3600, // 1 hour
+      expiresIn: 3600,
       tokenType: 'Bearer',
     };
+  }
+
+  /**
+   * Generates JWT tokens for email verification.
+   * @param {User} user - User entity.
+   * @returns {Promise<string>} Verification token.
+   * @private
+   */
+  private async generateEmailVerificationToken(user: User): Promise<string> {
+    const payload: JwtEmailVerificationPayload = {
+      sub: user.id,
+      email: user.email,
+      type: JwtPayloadType.EMAIL_VERIFICATION,
+    };
+
+    return this.jwtService.sign(payload, { expiresIn: '600s' });
   }
 
   /**
@@ -127,7 +191,7 @@ export class PlatformAuthService {
    * @returns {Promise<PlatformUser>} User entity.
    */
   async validatePayload(payload: JwtPayload): Promise<PlatformUser> {
-    const user = await this.userRepository.findOne({
+    const user = await this.userPlatformRepository.findOne({
       where: { id: payload.sub, active: true },
     });
 
@@ -136,5 +200,26 @@ export class PlatformAuthService {
     }
 
     return user;
+  }
+
+  /**
+   * Verifies a user's email using a token.
+   * @param {string} token - Verification token.
+   * @returns {Promise<TokenResponseDto>} Verification result.
+   * @throws {UnauthorizedException} If token is invalid or user not found.
+   */
+  async verifyEmail(token: string): Promise<TokenResponseDto> {
+    const payload = this.jwtService.verify<JwtPayload>(token);
+    if (payload.type !== JwtPayloadType.EMAIL_VERIFICATION) {
+      throw new UnauthorizedException('Invalid token type');
+    }
+    const user = await this.userRepository.findOne({ where: { id: payload.sub } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    user.status = Status.ACTIVE;
+    await this.userRepository.save(user);
+
+    return this.generateTokens(user);
   }
 }

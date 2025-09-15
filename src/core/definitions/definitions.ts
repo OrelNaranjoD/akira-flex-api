@@ -11,6 +11,7 @@ export interface RegisterResponseDto {
   id: string;
   email: string;
   status: string;
+  token: string;
 }
 
 export interface TenantUserResponseDto {
@@ -265,10 +266,17 @@ export interface JwtEmailVerificationPayload {
   type: JwtPayloadType.EMAIL_VERIFICATION;
 }
 
+export interface JwtPasswordResetPayload {
+  sub: string;
+  email: string;
+  type: JwtPayloadType.PASSWORD_RESET;
+}
+
 export enum JwtPayloadType {
   PLATFORM = 'PLATFORM',
   TENANT = 'TENANT',
   EMAIL_VERIFICATION = 'EMAIL_VERIFICATION',
+  PASSWORD_RESET = 'PASSWORD_RESET',
 }
 
 export interface CreateUserDto {

@@ -53,6 +53,10 @@ export class MailService {
    */
   async sendMail(to: string, subject: string, template: string, context: Record<string, any>) {
     const html = this.renderTemplate(template, context);
+    if (process.env.MAIL_DISABLE_SEND === 'true') {
+      console.log('[MailService] Sending disabled.');
+      return { disabled: true, to, subject, html };
+    }
     try {
       return await this.transporter.sendMail({
         from: '"AkiraFlex" <no-reply@akirasoftware.cl>',
@@ -70,7 +74,7 @@ export class MailService {
   }
 
   /**
-   * Sends a verification email using the welcome template.
+   * Sends a verification email.
    * @param to Recipient email address.
    * @param name Recipient's name.
    * @param token Verification token.
@@ -85,5 +89,23 @@ export class MailService {
       year: new Date().getFullYear(),
     };
     await this.sendMail(to, subject, 'welcome', context);
+  }
+
+  /**
+   * Sends recovery password email.
+   * @param to Recipient email address.
+   * @param name Recipient's name.
+   * @param token Recovery token.
+   * @returns Promise resolving when the email is sent.
+   */
+  async sendRecoveryPasswordEmail(to: string, name: string, token: string) {
+    const resetLink = process.env.FRONTEND_URL + `/reset-password?token=${token}`;
+    const subject = 'AkiraFlex - Recupera tu contraseña';
+    const context = {
+      name: name,
+      resetLink: resetLink,
+      year: new Date().getFullYear(),
+    };
+    await this.sendMail(to, subject, 'reset-password', context);
   }
 }

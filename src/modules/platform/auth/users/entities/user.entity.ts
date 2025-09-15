@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   BeforeInsert,
+  BeforeUpdate,
   JoinTable,
   ManyToMany,
 } from 'typeorm';
@@ -107,6 +108,18 @@ export class User {
   @BeforeInsert()
   async hashPassword() {
     if (this.password) {
+      this.password = await bcrypt.hash(this.password, 10);
+    }
+  }
+
+  /**
+   * Hashes password before updating in database.
+   * Only hashes if the password has changed.
+   * @private
+   */
+  @BeforeUpdate()
+  async hashPasswordUpdate() {
+    if (this.password && !this.password.startsWith('$2b$')) {
       this.password = await bcrypt.hash(this.password, 10);
     }
   }

@@ -26,4 +26,11 @@ export class RegisterResponseDto implements DefRegisterResponseDto {
    */
   @IsString()
   status: string;
+
+  /**
+   * Verification token for email confirmation.
+   * @type {string}
+   */
+  @IsString()
+  token: string;
 }

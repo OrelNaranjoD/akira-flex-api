@@ -26,6 +26,18 @@ import { Public } from '../../../core/decorators/public.decorator';
 @Controller('/auth')
 export class PlatformAuthController {
   /**
+   * Resends the email verification link to an existing user.
+   * @param email User email.
+   * @returns {Promise<RegisterResponseDto>} User data and new token.
+   * @description POST /resend-verification
+   * Publicly accessible endpoint.
+   */
+  @Public()
+  @Post('resend-verification')
+  async resendVerification(@Body('email') email: string): Promise<RegisterResponseDto> {
+    return await this.authService.resendVerificationEmail(email);
+  }
+  /**
    * Creates an instance of PlatformAuthController.
    * @param {PlatformAuthService} authService - Platform authentication service.
    */
@@ -74,12 +86,43 @@ export class PlatformAuthController {
   /**
    * Verifies a email address.
    * @param {string} token - Verification token.
-   * @returns {Promise<{ message: string }>} Verification result.
+   * @returns {Promise<TokenResponseDto>} New authentication tokens.
    * @description PATCH /verify-email?token=...
    */
   @Patch('verify-email')
   @HttpCode(HttpStatus.OK)
   async verifyEmail(@Query('token') token: string): Promise<TokenResponseDto> {
     return this.authService.verifyEmail(token);
+  }
+
+  /**
+   * Sends a recovery password email.
+   * @param {string} email - User email.
+   * @returns {Promise<RegisterResponseDto>} Result of the operation.
+   * @description POST /forgot-password.
+   * Publicly accessible endpoint.
+   */
+  @Public()
+  @Post('forgot-password')
+  async forgotPassword(@Body('email') email: string): Promise<RegisterResponseDto> {
+    return this.authService.forgotPassword(email);
+  }
+
+  /**
+   * Reset password using a valid token.
+   * @param token The password reset token.
+   * @param password The new password.
+   * @returns {Promise<TokenResponseDto>} New authentication tokens.
+   * @description PATCH /reset-password?token=...
+   * Publicly accessible endpoint.
+   */
+  @Public()
+  @Patch('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(
+    @Query('token') token: string,
+    @Body('password') password: string
+  ): Promise<TokenResponseDto> {
+    return this.authService.resetPassword(token, password);
   }
 }

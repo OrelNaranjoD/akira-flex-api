@@ -1,6 +1,11 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { LoginRequestDto } from './dtos/login-request.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { RegisterDto } from './dtos/register.dto';
@@ -73,13 +78,20 @@ export class PlatformAuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException('Email already in use');
     }
 
-    const user = this.userPlatformRepository.create(registerDto);
-    await this.userPlatformRepository.save(user);
+    try {
+      const user = this.userPlatformRepository.create(registerDto);
+      await this.userPlatformRepository.save(user);
 
-    return this.tokenService.generateAccessToken(user);
+      return this.tokenService.generateAccessToken(user);
+    } catch (error) {
+      if (error instanceof QueryFailedError && (error as any).code === '23505') {
+        throw new ConflictException('Email already in use');
+      }
+      throw new InternalServerErrorException('Failed to register user');
+    }
   }
 
   /**
@@ -95,28 +107,35 @@ export class PlatformAuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+      throw new ConflictException('Email already in use');
     }
 
     const user = this.userRepository.create({
       ...registerDto,
       status: Status.PENDING_VERIFICATION,
     });
-    const savedUser = await this.userRepository.save(user);
-    const verificationToken = await this.generateEmailVerificationToken(savedUser);
 
-    await this.mailService.sendVerificationEmail(
-      savedUser.email,
-      savedUser.firstName + ' ' + savedUser.lastName,
-      verificationToken
-    );
+    try {
+      const savedUser = await this.userRepository.save(user);
+      const verificationToken = await this.generateEmailVerificationToken(savedUser);
+      await this.mailService.sendVerificationEmail(
+        savedUser.email,
+        savedUser.firstName + ' ' + savedUser.lastName,
+        verificationToken
+      );
 
-    return {
-      id: savedUser.id,
-      email: savedUser.email,
-      status: savedUser.status,
-      token: verificationToken,
-    };
+      return {
+        id: savedUser.id,
+        email: savedUser.email,
+        status: savedUser.status,
+        token: verificationToken,
+      };
+    } catch (error) {
+      if (error instanceof QueryFailedError && (error as any).code === '23505') {
+        throw new ConflictException('Email already in use');
+      }
+      throw new InternalServerErrorException('Failed to register user');
+    }
   }
 
   /**

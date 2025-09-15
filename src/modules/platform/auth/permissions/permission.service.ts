@@ -1,32 +1,32 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PlatformPermission } from './entities/tenant-permission.entity';
-import { CreatePlatformPermissionDto } from './dtos/create-tenant-permission.dto';
-import { UpdatePlatformPermissionDto } from './dtos/update-tenant-permission.dto';
+import { Permission } from './entities/permission.entity';
+import { CreatePermissionDto } from './dtos/create-permission.dto';
+import { UpdatePermissionDto } from './dtos/update-permission.dto';
 
 /**
- * Service to manage platform permissions.
+ * Service to manage  permissions.
  */
 @Injectable()
-export class PlatformPermissionService {
+export class PermissionService {
   constructor(
-    @InjectRepository(PlatformPermission)
-    private readonly repo: Repository<PlatformPermission>
+    @InjectRepository(Permission)
+    private readonly repo: Repository<Permission>
   ) {}
 
   /**
-   * Create a new platform permission.
+   * Create a new  permission.
    * @param dto Data to create the permission.
    * @returns Created permission entity.
    */
-  async create(dto: CreatePlatformPermissionDto) {
+  async create(dto: CreatePermissionDto) {
     const perm = this.repo.create(dto);
     return this.repo.save(perm);
   }
 
   /**
-   * Retrieve all platform permissions.
+   * Retrieve all  permissions.
    * @returns Array of permissions.
    */
   async findAll() {
@@ -50,7 +50,7 @@ export class PlatformPermissionService {
    * @param dto Update data.
    * @returns Updated permission entity.
    */
-  async update(id: string, dto: UpdatePlatformPermissionDto) {
+  async update(id: string, dto: UpdatePermissionDto) {
     await this.repo.update(id, dto);
     return this.findOne(id);
   }

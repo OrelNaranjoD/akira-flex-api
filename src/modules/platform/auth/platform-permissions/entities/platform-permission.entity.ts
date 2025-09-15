@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToMany } from 'typeorm';
-import { PlatformRole } from '../../roles/entities/platform-role.entity';
+import { PlatformRole } from '../../platform-roles/entities/platform-role.entity';
 
 /**
  * Entity representing a platform-level permission.

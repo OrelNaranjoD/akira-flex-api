@@ -1,9 +1,9 @@
 import { IsString, IsOptional } from 'class-validator';
 
 /**
- * DTO to create a platform permission.
+ * DTO to create a tenant permission.
  */
-export class CreatePlatformPermissionDto {
+export class CreateTenantPermissionDto {
   @IsString()
   code: string;
 

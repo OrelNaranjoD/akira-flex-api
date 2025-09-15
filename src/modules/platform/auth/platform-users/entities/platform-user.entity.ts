@@ -9,13 +9,13 @@ import {
   ManyToMany,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { PlatformRole } from '../../roles/entities/platform-role.entity';
+import { PlatformRole } from '../../platform-roles/entities/platform-role.entity';
 
 /**
  * @todo Fix import to shared library (when moving types to shared lib, keep import as '@definitions').
  */
 import { PlatformUserEntity } from '@definitions';
-import { PlatformPermission } from '../../permissions/entities/platform-permission.entity';
+import { PlatformPermission } from '../../platform-permissions/entities/platform-permission.entity';
 
 /**
  * Represents a platform user.

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PlatformUser } from './entities/platform-user.entity';
-import { PlatformRole } from '../roles/entities/platform-role.entity';
+import { PlatformRole } from '../platform-roles/entities/platform-role.entity';
 import { CreatePlatformUserDto } from './dtos/create-platform-user.dto';
 import { UpdatePlatformUserDto } from './dtos/update-platform-user.dto';
 import { RegisterDto, UserRoles } from '@orelnaranjod/flex-shared-lib';

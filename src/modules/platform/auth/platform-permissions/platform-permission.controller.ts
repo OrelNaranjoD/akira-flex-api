@@ -13,9 +13,9 @@ import {
 import { PlatformPermissionService } from './platform-permission.service';
 import { CreatePlatformPermissionDto } from './dtos/create-platform-permission.dto';
 import { UpdatePlatformPermissionDto } from './dtos/update-platform-permission.dto';
-import { PlatformPermissionGuard } from '../permissions/guards/platform-permission.guard';
+import { PlatformPermissionGuard } from '../platform-permissions/guards/platform-permission.guard';
 import { PlatformAuthGuard } from '../guards/platform-auth.guard';
-import { RequirePlatformPermission } from '../permissions/decorators/platform-permissions.decorator';
+import { RequirePlatformPermission } from '../platform-permissions/decorators/platform-permissions.decorator';
 import { PlatformPermission } from '../../../../core/definitions/definitions';
 
 /**

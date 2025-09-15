@@ -2,14 +2,14 @@ import { Column, Entity, PrimaryGeneratedColumn, ManyToMany } from 'typeorm';
 import { TenantRole } from '../../roles/entities/tenant-role.entity';
 
 /**
- * Entity representing a platform-level permission.
+ * Entity representing a Tenant-level permission.
  * Used for RBAC and granular access control.
  * @property id Unique identifier for the permission.
  * @property code Unique permission code (enum or string).
  * @property description Optional human-readable description.
  */
 @Entity({ name: 'permissions' })
-export class PlatformPermission {
+export class TenantPermission {
   /** Unique identifier for the permission. */
   @PrimaryGeneratedColumn('uuid')
   id: string;

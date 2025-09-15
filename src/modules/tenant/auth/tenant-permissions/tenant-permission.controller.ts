@@ -9,30 +9,30 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { PlatformPermissionService } from './tenant-permission.service';
-import { CreatePlatformPermissionDto } from './dtos/create-tenant-permission.dto';
-import { UpdatePlatformPermissionDto } from './dtos/update-tenant-permission.dto';
+import { TenantPermissionService } from './tenant-permission.service';
+import { CreateTenantPermissionDto } from './dtos/create-tenant-permission.dto';
+import { UpdateTenantPermissionDto } from './dtos/update-tenant-permission.dto';
 
 /**
- * Controller for platform permissions management.
+ * Controller for tenant permissions management.
  */
-@Controller('platforms/permissions')
-export class PlatformPermissionController {
-  constructor(private readonly service: PlatformPermissionService) {}
+@Controller('tenants/permissions')
+export class TenantPermissionController {
+  constructor(private readonly service: TenantPermissionService) {}
 
   /**
-   * Create a new platform permission.
+   * Create a new tenant permission.
    * @param dto Data to create the permission.
    * @returns Created permission entity.
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreatePlatformPermissionDto) {
+  create(@Body() dto: CreateTenantPermissionDto) {
     return this.service.create(dto);
   }
 
   /**
-   * Retrieve all platform permissions.
+   * Retrieve all tenant permissions.
    * @returns Array of permission entities.
    */
   @Get()
@@ -57,7 +57,7 @@ export class PlatformPermissionController {
    * @returns Updated permission entity.
    */
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdatePlatformPermissionDto) {
+  update(@Param('id') id: string, @Body() dto: UpdateTenantPermissionDto) {
     return this.service.update(id, dto);
   }
 

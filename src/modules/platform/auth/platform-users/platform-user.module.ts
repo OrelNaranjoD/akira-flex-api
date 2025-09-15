@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PlatformUser } from './entities/platform-user.entity';
-import { PlatformRole } from '../roles/entities/platform-role.entity';
+import { PlatformRole } from '../platform-roles/entities/platform-role.entity';
 import { PlatformAuthGuard } from '../guards/platform-auth.guard';
-import { PlatformPermissionGuard } from '../permissions/guards/platform-permission.guard';
+import { PlatformPermissionGuard } from '../platform-permissions/guards/platform-permission.guard';
 import { PlatformUserController } from './platform-user.controller';
 import { PlatformUserService } from './platform-user.service';
 

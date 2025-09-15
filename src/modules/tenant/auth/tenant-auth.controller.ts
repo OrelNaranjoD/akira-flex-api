@@ -15,9 +15,9 @@ import { LoginRequestDto } from './dtos/login-request.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { RegisterDto } from './dtos/register.dto';
 import { TenantRoles } from './roles/decorators/tenant-roles.decorator';
-import { PlatformRoles } from '../../platform/auth/roles/decorators/platform-roles.decorator';
+import { PlatformRoles } from '../../platform/auth/platform-roles/decorators/platform-roles.decorator';
 import { TenantAuthGuard } from './guards/tenant-auth.guard';
-import { TenantPermissionGuard } from './permissions/guards/tenant-permission.guard';
+import { TenantPermissionGuard } from './tenant-permissions/guards/tenant-permission.guard';
 
 /**
  * Controller for tenant authentication operations.

@@ -10,10 +10,17 @@ import { LoginRequestDto } from './dtos/login-request.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { RegisterDto } from './dtos/register.dto';
 import { PlatformUser } from './platform-users/entities/platform-user.entity';
-import { JwtPayload, JwtPayloadType, Status, RegisterResponseDto } from '@definitions';
+import {
+  JwtPayload,
+  JwtPayloadType,
+  JwtRefreshPayload,
+  Status,
+  RegisterResponseDto,
+} from '@definitions';
 import { User } from './users/entities/user.entity';
 import { MailService } from '../../../core/mail/mail.service';
 import { TokenService } from '../../../core/token/token.service';
+import type { Request, Response } from 'express';
 
 /**
  * Service responsible for platform authentication operations.
@@ -144,7 +151,11 @@ export class PlatformAuthService {
    * @returns {Promise<TokenResponseDto>} Authentication tokens.
    * @throws {UnauthorizedException} If credentials are invalid.
    */
-  async login(loginRequestDto: LoginRequestDto): Promise<TokenResponseDto> {
+  async login(loginRequestDto: LoginRequestDto): Promise<{
+    tokenResponse: TokenResponseDto;
+    refreshToken?: string;
+    refreshExpiresIn?: number;
+  }> {
     const user = await this.validateUser(loginRequestDto.email, loginRequestDto.password);
 
     if (!user) {
@@ -152,9 +163,35 @@ export class PlatformAuthService {
     }
 
     user.lastLogin = new Date();
+
+    // Generate refresh token and hash it for storage
+    const { refreshToken, refreshTokenHash } =
+      await this.tokenService.generateAndHashRefreshToken(user);
+
+    user.refreshTokenHash = refreshTokenHash;
     await this.userPlatformRepository.save(user);
 
-    return this.tokenService.generateAccessToken(user);
+    const tokenResponse = this.tokenService.generateAccessToken(user);
+
+    return { tokenResponse, refreshToken };
+  }
+
+  /**
+   * Login and set refresh cookie on the provided response.
+   * @param loginRequestDto - Login credentials DTO.
+   * @param res - Express response to set the cookie.
+   * @returns TokenResponseDto with access token info.
+   */
+  async loginWithCookie(
+    loginRequestDto: LoginRequestDto,
+    res: Response
+  ): Promise<TokenResponseDto> {
+    const { tokenResponse, refreshToken } = await this.login(loginRequestDto);
+    if (refreshToken) {
+      const cookieOptions = this.tokenService.getRefreshCookieOptions();
+      res.cookie('refresh_token', refreshToken, cookieOptions);
+    }
+    return tokenResponse;
   }
 
   /**
@@ -291,5 +328,136 @@ export class PlatformAuthService {
     user.password = password;
     await this.userRepository.save(user);
     return this.tokenService.generateAccessToken(user);
+  }
+
+  /**
+   * Refreshes JWT tokens using a refresh token.
+   * @param {string} token - Refresh token.
+   * @returns {Promise<TokenResponseDto>} New authentication tokens.
+   * @throws {UnauthorizedException} If token is invalid or user not found.
+   */
+  async refreshTokens(token: string): Promise<{
+    tokenResponse: TokenResponseDto;
+    refreshToken?: string;
+    refreshExpiresIn?: number;
+  }> {
+    // Verify refresh token and payload
+    const payload = this.tokenService.verifyRefreshToken<JwtRefreshPayload>(token);
+    if (payload.type !== JwtPayloadType.REFRESH) {
+      throw new UnauthorizedException('Invalid token type');
+    }
+
+    const user = await this.userPlatformRepository.findOne({
+      where: { id: payload.sub, active: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+
+    // Ensure stored hash exists and matches provided token
+    if (!user.refreshTokenHash) {
+      throw new UnauthorizedException('Refresh token revoked');
+    }
+    const matches = await this.tokenService.compareRefreshTokenWithHash(
+      token,
+      user.refreshTokenHash
+    );
+    if (!matches) {
+      // Possible token reuse / theft — revoke stored token and force logout
+      user.refreshTokenHash = undefined;
+      await this.userPlatformRepository.save(user);
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    // Generate new access token and rotate refresh token
+    const tokenResponse = this.tokenService.generateAccessToken(user);
+
+    // Rotate refresh token (generate new and store hash)
+    const { refreshToken } = await this.tokenService.generateAndHashRefreshToken(user);
+    await this.userPlatformRepository.save(user);
+
+    return { tokenResponse, refreshToken };
+  }
+
+  /**
+   * Handle refresh flow using request cookies and set rotated cookie on response.
+   * @param req - Express request (reads cookie).
+   * @param res - Express response (sets cookie).
+   * @returns New authentication tokens.
+   */
+  async refreshWithCookie(req: Request, res: Response): Promise<TokenResponseDto> {
+    const refreshToken = String(req.cookies?.refresh_token || '');
+    if (!refreshToken) throw new UnauthorizedException('No refresh token');
+
+    const { tokenResponse, refreshToken: newRefreshToken } = await this.refreshTokens(refreshToken);
+
+    if (newRefreshToken) {
+      const cookieOptions = this.tokenService.getRefreshCookieOptions();
+      res.cookie('refresh_token', newRefreshToken, cookieOptions);
+    }
+
+    return tokenResponse;
+  }
+
+  /**
+   * Logout using cookies: revoke refresh token (if present) or force logout by userId, clear cookie.
+   * @param req - Express request (reads cookie).
+   * @param res - Express response (clears cookie).
+   * @param userId - Optional user id to force logout.
+   * @returns An object with a logout message.
+   */
+  async logoutFromRequest(
+    req: Request,
+    res: Response,
+    userId?: string
+  ): Promise<{ message: string }> {
+    const refreshToken = String(req.cookies?.refresh_token || '');
+    const result = await this.logout(refreshToken || undefined, userId);
+
+    const clearOptions = {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
+    };
+    res.clearCookie('refresh_token', clearOptions);
+    return result;
+  }
+
+  /**
+   * Logout user by invalidating the refresh token.
+   * @param token Optional refresh token to revoke.
+   * @param userId Optional user id to force logout (admin action).
+   * @returns An object with a logout message.
+   */
+  async logout(token?: string, userId?: string): Promise<{ message: string }> {
+    // If a refresh token is provided (from cookie), try to revoke it.
+    if (token) {
+      try {
+        const payload = this.tokenService.verifyRefreshToken<JwtRefreshPayload>(token);
+        const user = await this.userPlatformRepository.findOne({ where: { id: payload.sub } });
+        if (user) {
+          user.refreshTokenHash = undefined;
+          await this.userPlatformRepository.save(user);
+        }
+        return { message: 'Logged out' };
+      } catch {
+        // If token is invalid or expired, treat as already logged out for idempotency.
+        return { message: 'Logged out' };
+      }
+    }
+
+    // Admin-forced logout by userId
+    if (userId) {
+      const user = await this.userPlatformRepository.findOne({ where: { id: userId } });
+      if (user) {
+        user.refreshTokenHash = undefined;
+        await this.userPlatformRepository.save(user);
+      }
+      return { message: 'Logged out' };
+    }
+
+    // No token or userId provided: still return success (cookie will be cleared by controller).
+    return { message: 'Logged out' };
   }
 }

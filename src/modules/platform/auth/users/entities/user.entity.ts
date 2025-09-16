@@ -102,6 +102,13 @@ export class User {
   lastLogin: Date;
 
   /**
+   * Hashed refresh token for cookie-based refresh flows.
+   * Stored as a hash for security. Nullable when no refresh token issued.
+   */
+  @Column({ type: 'varchar', name: 'refresh_token_hash', nullable: true })
+  refreshTokenHash?: string;
+
+  /**
    * Hashes password before inserting into database.
    * @private
    */
@@ -131,5 +138,12 @@ export class User {
    */
   async comparePassword(password: string): Promise<boolean> {
     return bcrypt.compare(password, this.password);
+  }
+
+  /**
+   * Clears the stored refresh token hash (use on logout/revoke).
+   */
+  clearRefreshToken() {
+    this.refreshTokenHash = undefined;
   }
 }

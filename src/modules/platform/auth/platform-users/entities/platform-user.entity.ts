@@ -10,10 +10,6 @@ import {
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { PlatformRole } from '../../platform-roles/entities/platform-role.entity';
-
-/**
- * @todo Fix import to shared library (when moving types to shared lib, keep import as '@definitions').
- */
 import { PlatformUserEntity } from '@definitions';
 import { PlatformPermission } from '../../platform-permissions/entities/platform-permission.entity';
 
@@ -122,6 +118,13 @@ export class PlatformUser implements PlatformUserEntity {
   lastLogin: Date;
 
   /**
+   * Hashed refresh token for cookie-based refresh flows.
+   * Stored as a hash for security. Nullable when no refresh token issued.
+   */
+  @Column({ type: 'varchar', name: 'refresh_token_hash', nullable: true })
+  refreshTokenHash?: string;
+
+  /**
    * Hashes password before inserting into database.
    * @private
    */
@@ -139,5 +142,12 @@ export class PlatformUser implements PlatformUserEntity {
    */
   async comparePassword(password: string): Promise<boolean> {
     return bcrypt.compare(password, this.password);
+  }
+
+  /**
+   * Clears the stored refresh token hash (use on logout/revoke).
+   */
+  clearRefreshToken() {
+    this.refreshTokenHash = undefined;
   }
 }

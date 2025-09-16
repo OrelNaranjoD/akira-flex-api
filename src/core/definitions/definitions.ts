@@ -272,11 +272,18 @@ export interface JwtPasswordResetPayload {
   type: JwtPayloadType.PASSWORD_RESET;
 }
 
+export interface JwtRefreshPayload {
+  sub: string;
+  email?: string;
+  type: JwtPayloadType.REFRESH;
+}
+
 export enum JwtPayloadType {
   PLATFORM = 'PLATFORM',
   TENANT = 'TENANT',
   EMAIL_VERIFICATION = 'EMAIL_VERIFICATION',
   PASSWORD_RESET = 'PASSWORD_RESET',
+  REFRESH = 'REFRESH',
 }
 
 export interface CreateUserDto {

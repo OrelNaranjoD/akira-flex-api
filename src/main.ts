@@ -1,8 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { VersioningType } from '@nestjs/common';
+import { Logger, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 
 /**
  * Bootstrap function to start the NestJS application.
@@ -30,21 +31,38 @@ async function bootstrap() {
     optionsSuccessStatus: 200,
   });
 
-  // Security HTTP headers with Helmet
+  // CSRF and other security headers
+  const isProduction = process.env.NODE_ENV === 'production';
+  const frontendUrl = process.env.FRONTEND_URL ?? process.env.CORS_ORIGINS?.split(',')[0];
+
+  const baseDirectives: Record<string, string[] | string> = {
+    defaultSrc: ["'self'"],
+    imgSrc: ["'self'", 'data:', 'https:'],
+    fontSrc: ["'self'", 'https:', 'data:'],
+    frameSrc: ["'none'"],
+    objectSrc: ["'none'"],
+  };
+
+  const devDirectives = {
+    ...baseDirectives,
+    scriptSrc: ["'self'", "'unsafe-inline'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    connectSrc: frontendUrl ? ["'self'", frontendUrl] : ["'self'"],
+  };
+
+  const prodDirectives = {
+    ...baseDirectives,
+    scriptSrc: ["'self'"],
+    styleSrc: ["'self'"],
+    connectSrc: frontendUrl ? ["'self'", frontendUrl] : ["'self'"],
+  };
+
   app.use(
     helmet({
       crossOriginEmbedderPolicy: false,
       contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:', 'https:'],
-          fontSrc: ["'self'", 'https:', 'data:'],
-          connectSrc: ["'self'"],
-          frameSrc: ["'none'"],
-          objectSrc: ["'none'"],
-        },
+        directives: isProduction ? prodDirectives : devDirectives,
+        reportOnly: !isProduction,
       },
       hsts: {
         maxAge: 31536000,
@@ -55,6 +73,9 @@ async function bootstrap() {
     })
   );
 
+  // Cookie parser
+  app.use(cookieParser());
+
   // Global prefix and API versioning
   app.setGlobalPrefix('api');
   app.enableVersioning({
@@ -62,18 +83,25 @@ async function bootstrap() {
     defaultVersion: '1',
   });
 
+  // Proxy trust
+  if (process.env.TRUST_PROXY === 'true' || process.env.NODE_ENV === 'production') {
+    const expressApp = app.getHttpAdapter().getInstance();
+    expressApp.set('trust proxy', 1);
+  }
+
   // Swagger setup
-  const config = new DocumentBuilder()
-    .setTitle('AkiraFlex API')
-    .setDescription('The AkiraFlex API description')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, documentFactory, {
-    customSiteTitle: 'AkiraFlex API',
-    customfavIcon: '/favicon.ico',
-    customCss: `
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('AkiraFlex API')
+      .setDescription('The AkiraFlex API description')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document, {
+      customSiteTitle: 'AkiraFlex API',
+      customfavIcon: '/favicon.ico',
+      customCss: `
       .topbar {
         display: none !important;
       }
@@ -107,10 +135,11 @@ async function bootstrap() {
         padding: 0 0 10px 0 !important;
       }
     `,
-  });
-
+    });
+  }
   // Start the application
   await app.listen(process.env.PORT ?? 3000);
+  Logger.debug(`Application is running on: ${await app.getUrl()}/docs`);
 }
 
 bootstrap().catch((error) => {

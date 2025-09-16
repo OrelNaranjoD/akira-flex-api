@@ -7,7 +7,10 @@ import {
   UseGuards,
   Patch,
   Query,
+  Req,
+  Res,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { PlatformAuthService } from './platform-auth.service';
 import { RegisterDto } from './dtos/register.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
@@ -17,6 +20,7 @@ import { PlatformPermissionGuard } from './platform-permissions/guards/platform-
 import { RequirePlatformPermission } from './platform-permissions/decorators/platform-permissions.decorator';
 import { PlatformPermission, RegisterResponseDto } from '@definitions';
 import { Public } from '../../../core/decorators/public.decorator';
+import { TokenService } from '../../../core/token/token.service';
 
 /**
  * Controller for platform authentication operations.
@@ -40,8 +44,12 @@ export class PlatformAuthController {
   /**
    * Creates an instance of PlatformAuthController.
    * @param {PlatformAuthService} authService - Platform authentication service.
+   * @param {TokenService} tokenService - Token helper service (for cookie options).
    */
-  constructor(private readonly authService: PlatformAuthService) {}
+  constructor(
+    private readonly authService: PlatformAuthService,
+    private readonly tokenService: TokenService
+  ) {}
 
   /**
    * Registers a new platform administrator (super admin only).
@@ -74,13 +82,17 @@ export class PlatformAuthController {
   /**
    * Authenticates a platform user.
    * @param {LoginRequestDto} loginRequestDto - User login credentials.
+   * @param {Response} res - Response object to set refresh cookie.
    * @returns {Promise<TokenResponseDto>} Authentication tokens.
    * @description POST /login.
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() loginRequestDto: LoginRequestDto): Promise<TokenResponseDto> {
-    return this.authService.login(loginRequestDto);
+  async login(
+    @Body() loginRequestDto: LoginRequestDto,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<TokenResponseDto> {
+    return this.authService.loginWithCookie(loginRequestDto, res);
   }
 
   /**
@@ -124,5 +136,39 @@ export class PlatformAuthController {
     @Body('password') password: string
   ): Promise<TokenResponseDto> {
     return this.authService.resetPassword(token, password);
+  }
+
+  /**
+   * Refreshes authentication tokens using a valid refresh token.
+   * @param {Request} req - Request object to read refresh cookie.
+   * @param {Response} res - Response object to set rotated refresh cookie.
+   * @returns {Promise<TokenResponseDto>} New authentication tokens.
+   * @description POST /refresh-token.
+   */
+  @Post('refresh-token')
+  @HttpCode(HttpStatus.OK)
+  async refreshToken(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<TokenResponseDto> {
+    return this.authService.refreshWithCookie(req, res);
+  }
+
+  /**
+   * Logout user by invalidating the refresh token.
+   * @param {Request} req - Request object to read refresh cookie.
+   * @param {Response} res - Response object to clear cookie.
+   * @param {string} [userId] - Optional user id to force logout (admin action).
+   * @returns {Promise<{ message: string }>} Logout confirmation message.
+   * @description POST /logout.
+   */
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body('userId') userId?: string
+  ): Promise<{ message: string }> {
+    return this.authService.logoutFromRequest(req, res, userId);
   }
 }

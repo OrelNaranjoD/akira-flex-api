@@ -16,7 +16,7 @@ import { UpdatePermissionDto } from './dtos/update-permission.dto';
 import { PermissionGuard } from './guards/permission.guard';
 import { PlatformAuthGuard } from '../guards/platform-auth.guard';
 import { RequirePermission } from './decorators/permissions.decorator';
-import { Permission } from '../../../../core/definitions/definitions';
+import { Permission } from '../../../../core/shared/definitions';
 
 /**
  * Controller for platform permissions management.

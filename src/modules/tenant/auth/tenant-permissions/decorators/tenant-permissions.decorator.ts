@@ -1,6 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-//@TODO Fix import to shared lib.
-import { PlatformPermission } from '@definitions';
+import { PlatformPermission } from '@shared';
 
 /**
  * Decorator to define required platform permissions for a route.

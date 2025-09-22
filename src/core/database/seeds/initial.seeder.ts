@@ -5,7 +5,7 @@ import { PlatformUser } from '../../../modules/platform/auth/platform-users/enti
 import { PlatformPermission } from '../../../modules/platform/auth/platform-permissions/entities/platform-permission.entity';
 import { PlatformRole } from '../../../modules/platform/auth/platform-roles/entities/platform-role.entity';
 import { Role } from '../../../modules/platform/auth/roles/entities/role.entity';
-import { Role as RoleEnum } from '@definitions';
+import { Role as RoleEnum } from '@shared';
 
 /**
  * Seeder that creates the initial platform administrator user in platform_users if the table is empty.

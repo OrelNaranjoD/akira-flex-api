@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { PlatformRole } from '../../platform-roles/entities/platform-role.entity';
-import { PlatformUserEntity } from '@definitions';
+import { PlatformUserEntity } from '@shared';
 import { PlatformPermission } from '../../platform-permissions/entities/platform-permission.entity';
 
 /**

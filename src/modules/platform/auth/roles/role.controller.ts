@@ -5,7 +5,7 @@ import { PlatformAuthGuard } from '../guards/platform-auth.guard';
 import { PlatformPermissionGuard } from '../platform-permissions/guards/platform-permission.guard';
 import { CreateRoleDto } from './dtos/create-role.dto';
 import { UpdateRoleDto } from './dtos/update-role.dto';
-import { PlatformPermission } from '@definitions';
+import { PlatformPermission } from '@shared';
 
 /**
  * Controller for managing -level roles and permissions.

@@ -16,8 +16,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@definitions": ["src/core/definitions/definitions"],
-      "@core/*": ["src/core/*"],
+      "@shared": ["src/core/shared/index"],
       "@tenant/*": ["src/modules/tenant/*"],
       "@platform/*": ["src/modules/platform/*"]
     },

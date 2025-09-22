@@ -16,7 +16,7 @@ import {
   JwtRefreshPayload,
   Status,
   RegisterResponseDto,
-} from '@definitions';
+} from '@shared';
 import { User } from './users/entities/user.entity';
 import { MailService } from '../../../core/mail/mail.service';
 import { TokenService } from '../../../core/token/token.service';

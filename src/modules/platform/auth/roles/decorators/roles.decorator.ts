@@ -1,5 +1,5 @@
 import { SetMetadata, CustomDecorator } from '@nestjs/common';
-import { Role } from '@definitions';
+import { Role } from '@shared';
 
 /**
  * Decorator to set required roles for a  route.

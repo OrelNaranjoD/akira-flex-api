@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { UserResponseDto as DefCreateUserDto } from '@definitions';
+import { UserResponseDto as DefCreateUserDto } from '@shared';
 
 /**
  * Data Transfer Object for user  response.

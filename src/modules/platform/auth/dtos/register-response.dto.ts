@@ -1,5 +1,5 @@
 import { IsEmail, IsString } from 'class-validator';
-import { RegisterResponseDto as DefRegisterResponseDto } from '@definitions';
+import { RegisterResponseDto as DefRegisterResponseDto } from '@shared';
 
 /**
  * Data Transfer Object for user registration.

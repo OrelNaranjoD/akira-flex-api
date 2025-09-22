@@ -10,7 +10,7 @@ import {
   ManyToMany,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Status } from '@definitions';
+import { Status } from '@shared';
 import { Role } from '../../roles/entities/role.entity';
 
 /**

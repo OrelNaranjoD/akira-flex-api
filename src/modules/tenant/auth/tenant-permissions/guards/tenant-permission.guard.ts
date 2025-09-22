@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { TenantPermission } from '@definitions';
+import { TenantPermission } from '@shared';
 
 /**
  * Guard for permission-based authorization in tenant context.

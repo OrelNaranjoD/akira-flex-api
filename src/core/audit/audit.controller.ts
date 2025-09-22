@@ -4,7 +4,7 @@ import { AuditLog } from './audit-log.entity';
 import { PlatformPermissionGuard } from '../../modules/platform/auth/platform-permissions/guards/platform-permission.guard';
 import { PlatformAuthGuard } from '../../modules/platform/auth/guards/platform-auth.guard';
 import { RequirePlatformPermission } from './decorators/platform-permissions.decorator';
-import { PlatformPermission } from '../definitions/definitions';
+import { PlatformPermission } from '../shared/definitions';
 /**
  * Controller for audit log management operations.
  * @class AuditController

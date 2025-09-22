@@ -1,6 +1,6 @@
 import { Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Permission } from '../../permissions/entities/permission.entity';
-import { RoleEntity } from '@definitions';
+import { RoleEntity } from '@shared';
 
 /**
  * Entity representing a role.

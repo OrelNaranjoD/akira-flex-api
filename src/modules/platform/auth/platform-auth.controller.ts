@@ -1,15 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  HttpCode,
-  HttpStatus,
-  UseGuards,
-  Patch,
-  Query,
-  Req,
-  Res,
-} from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Patch, Query, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { PlatformAuthService } from './platform-auth.service';
 import { RegisterDto } from './dtos/register.dto';
@@ -18,7 +7,7 @@ import { LoginRequestDto } from './dtos/login-request.dto';
 import { PlatformAuthGuard } from './guards/platform-auth.guard';
 import { PlatformPermissionGuard } from './platform-permissions/guards/platform-permission.guard';
 import { RequirePlatformPermission } from './platform-permissions/decorators/platform-permissions.decorator';
-import { PlatformPermission, RegisterResponseDto } from '@definitions';
+import { PlatformPermission, RegisterResponseDto } from '@shared';
 import { Public } from '../../../core/decorators/public.decorator';
 import { TokenService } from '../../../core/token/token.service';
 
@@ -87,7 +76,6 @@ export class PlatformAuthController {
    * @description POST /login.
    */
   @Post('login')
-  @HttpCode(HttpStatus.OK)
   async login(
     @Body() loginRequestDto: LoginRequestDto,
     @Res({ passthrough: true }) res: Response
@@ -102,7 +90,6 @@ export class PlatformAuthController {
    * @description PATCH /verify-email?token=...
    */
   @Patch('verify-email')
-  @HttpCode(HttpStatus.OK)
   async verifyEmail(@Query('token') token: string): Promise<TokenResponseDto> {
     return this.authService.verifyEmail(token);
   }
@@ -130,7 +117,6 @@ export class PlatformAuthController {
    */
   @Public()
   @Patch('reset-password')
-  @HttpCode(HttpStatus.OK)
   async resetPassword(
     @Query('token') token: string,
     @Body('password') password: string
@@ -146,7 +132,6 @@ export class PlatformAuthController {
    * @description POST /refresh-token.
    */
   @Post('refresh-token')
-  @HttpCode(HttpStatus.OK)
   async refreshToken(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response
@@ -163,7 +148,6 @@ export class PlatformAuthController {
    * @description POST /logout.
    */
   @Post('logout')
-  @HttpCode(HttpStatus.OK)
   async logout(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,

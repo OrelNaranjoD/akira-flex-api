@@ -1,5 +1,5 @@
 import { IsString, IsOptional } from 'class-validator';
-import { CreatePlatformPermissionDto as DefCreatePlatformPermissionDto } from '@definitions';
+import { CreatePlatformPermissionDto as DefCreatePlatformPermissionDto } from '@shared';
 
 /**
  * DTO to create a platform permission.

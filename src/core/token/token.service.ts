@@ -8,7 +8,7 @@ import {
   JwtPasswordResetPayload,
   Status,
   PlatformRole,
-} from '@definitions';
+} from '@shared';
 import { User } from '../../modules/platform/auth/users/entities/user.entity';
 import { PlatformUser } from '../../modules/platform/auth/platform-users/entities/platform-user.entity';
 import { TokenResponseDto } from '../../modules/platform/auth/dtos/token-response.dto';

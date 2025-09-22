@@ -29,13 +29,14 @@ import { AuditModule } from './core/audit/audit.module';
       useFactory: () => {
         const isProduction = process.env.NODE_ENV === 'production';
         const databaseUrl = process.env.DATABASE_URL;
+        const isLoggerEnabled = process.env.TYPEORM_LOGGING === 'true';
         return {
           type: 'postgres',
           url: databaseUrl,
           autoLoadEntities: true,
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           synchronize: !isProduction,
-          logging: !isProduction,
+          logging: isLoggerEnabled,
           dropSchema: !isProduction,
           ssl: isProduction ? { rejectUnauthorized: false } : false,
           extra: isProduction

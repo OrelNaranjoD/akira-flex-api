@@ -5,6 +5,7 @@ import { PlatformUser } from './platform-users/entities/platform-user.entity';
 import { PlatformAuthService } from './platform-auth.service';
 import { PlatformJwtStrategy } from './strategies/platform-jwt.strategy';
 import { User } from './users/entities/user.entity';
+import { Role } from './roles/entities/role.entity';
 import { MailModule } from '../../../core/mail/mail.module';
 import { TokenModule } from '../../../core/token/token.module';
 
@@ -13,7 +14,7 @@ import { TokenModule } from '../../../core/token/token.module';
  * @module PlatformAuthModule
  */
 @Module({
-  imports: [MailModule, TypeOrmModule.forFeature([PlatformUser, User]), TokenModule],
+  imports: [MailModule, TypeOrmModule.forFeature([PlatformUser, User, Role]), TokenModule],
   controllers: [PlatformAuthController],
   providers: [PlatformAuthService, PlatformJwtStrategy],
   exports: [PlatformAuthService],

@@ -1,6 +1,6 @@
 import { Expose } from 'class-transformer';
 //@TODO Fix import to shared lib
-import { PlatformUserResponseDto as DefCreatePlatformUserDto } from '@definitions';
+import { PlatformUserResponseDto as DefCreatePlatformUserDto } from '@shared';
 
 /**
  * Data Transfer Object for user platform response.

@@ -1,6 +1,6 @@
 import { IsString, IsArray, ArrayNotEmpty } from 'class-validator';
 //@TODO Fix import to shared lib.
-import { CreateRoleDto as DefCreateRoleDto } from '@definitions';
+import { CreateRoleDto as DefCreateRoleDto } from '@shared';
 
 /**
  * Data Transfer Object for creating a new  role.

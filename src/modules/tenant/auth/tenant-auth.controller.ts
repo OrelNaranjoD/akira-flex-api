@@ -3,21 +3,19 @@ import {
   Post,
   Body,
   Param,
-  HttpCode,
-  HttpStatus,
   UseGuards,
   Request,
   ForbiddenException,
 } from '@nestjs/common';
-import { PlatformRole, TenantRole } from '@definitions';
 import { TenantAuthService } from './tenant-auth.service';
 import { LoginRequestDto } from './dtos/login-request.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { RegisterDto } from './dtos/register.dto';
-import { TenantRoles } from './roles/decorators/tenant-roles.decorator';
-import { PlatformRoles } from '../../platform/auth/platform-roles/decorators/platform-roles.decorator';
 import { TenantAuthGuard } from './guards/tenant-auth.guard';
 import { TenantPermissionGuard } from './tenant-permissions/guards/tenant-permission.guard';
+import { RequireTenantPermission } from './tenant-permissions/decorators/tenant-permissions.decorator';
+import { TenantPermission } from '../../../core/shared/definitions';
+import { PlatformRole } from '../../../core/shared/definitions';
 
 /**
  * Controller for tenant authentication operations.
@@ -40,7 +38,6 @@ export class TenantAuthController {
    * @description POST /login.
    */
   @Post('login')
-  @HttpCode(HttpStatus.OK)
   async login(
     @Param('tenantId') tenantId: string,
     @Body() loginRequestDto: LoginRequestDto
@@ -54,24 +51,52 @@ export class TenantAuthController {
    * @param {RegisterDto} registerDto - User registration data.
    * @param {Request} request - HTTP request.
    * @returns {Promise<TokenResponseDto>} Authentication tokens.
-   * @description POST /register
-   * Roles: admin, super_admin.
+   * @throws {ForbiddenException} If the authenticated user tries to create users in other tenants.
+   * @description POST /register.
    */
   @Post('register')
   @UseGuards(TenantAuthGuard, TenantPermissionGuard)
-  @TenantRoles(TenantRole.ADMIN)
-  @PlatformRoles(PlatformRole.SUPER_ADMIN)
+  @RequireTenantPermission(TenantPermission.USER_CREATE)
   async register(
     @Param('tenantId') tenantId: string,
     @Body() registerDto: RegisterDto,
     @Request() request
   ): Promise<TokenResponseDto> {
-    // Verify that the authenticated user belongs to the same tenant
     const userTenantId = request.user.tenantId;
-    if (userTenantId !== tenantId) {
+    const userRoles = request.user.roles || [];
+
+    // Allow SUPER_ADMIN to create users in any tenant
+    // For tenant admins, only allow creating users in their own tenant
+    if (!userRoles.includes(PlatformRole.SUPER_ADMIN) && userTenantId !== tenantId) {
       throw new ForbiddenException('Cannot create users in other tenants');
     }
 
     return this.authService.register(tenantId, registerDto);
+  }
+
+  /**
+   * Creates the first admin user for a tenant (SUPER_ADMIN only).
+   * @param {string} tenantId - ID of the tenant.
+   * @param {RegisterDto} registerDto - User registration data.
+   * @param {Request} request - HTTP request.
+   * @returns {Promise<TokenResponseDto>} Authentication tokens.
+   * @throws {ForbiddenException} If not SUPER_ADMIN or admin already exists.
+   * @description POST /create-admin.
+   */
+  @Post('create-admin')
+  @UseGuards(TenantAuthGuard)
+  async createTenantAdmin(
+    @Param('tenantId') tenantId: string,
+    @Body() registerDto: RegisterDto,
+    @Request() request
+  ): Promise<TokenResponseDto> {
+    const userRoles = request.user.roles || [];
+
+    // Only SUPER_ADMIN can create tenant admins
+    if (!userRoles.includes(PlatformRole.SUPER_ADMIN)) {
+      throw new ForbiddenException('Only SUPER_ADMIN can create tenant administrators');
+    }
+
+    return this.authService.createTenantAdmin(tenantId, registerDto);
   }
 }

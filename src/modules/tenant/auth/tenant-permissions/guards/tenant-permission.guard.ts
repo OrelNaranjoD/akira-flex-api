@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { TenantPermission } from '@definitions';
+import { TenantPermission } from '../../../../../core/shared/definitions';
+import { PlatformRole } from '../../../../../core/shared/definitions';
 
 /**
  * Guard for permission-based authorization in tenant context.
@@ -25,7 +26,13 @@ export class TenantPermissionGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
+    const userRoles: string[] = request.user?.roles || [];
     const userPermissions: TenantPermission[] = request.user?.permissions || [];
+
+    // Allow SUPER_ADMIN to access tenant routes
+    if (userRoles.includes(PlatformRole.SUPER_ADMIN)) {
+      return true;
+    }
 
     const hasAllPermissions = requiredPermissions.every((perm) => userPermissions.includes(perm));
 

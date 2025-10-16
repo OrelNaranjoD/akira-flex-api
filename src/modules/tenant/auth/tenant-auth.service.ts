@@ -6,14 +6,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import {
-  JwtPayload,
-  AdminRole,
-  JwtPayloadType,
-  RegisterDto,
-  TokenResponseDto,
-  LoginRequestDto,
-} from '@orelnaranjod/flex-shared-lib';
+import { JwtPayload, PlatformRole, JwtPayloadType } from '../../../core/shared/definitions';
+import { RegisterDto } from './dtos/register.dto';
+import { TokenResponseDto } from './dtos/token-response.dto';
+import { LoginRequestDto } from './dtos/login-request.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TenantService } from '../../platform/tenants/services/tenant.service';
@@ -51,7 +47,7 @@ export class TenantAuthService {
    */
   async register(tenantId: string, registerDto: RegisterDto): Promise<TokenResponseDto> {
     // Check if tenant exists and is active
-    const tenant = await this.tenantService.findOne(tenantId);
+    const tenant = await this.tenantService.findOneInternal(tenantId);
 
     if (!tenant.active) {
       throw new ForbiddenException('Tenant account is not active');
@@ -82,6 +78,50 @@ export class TenantAuthService {
     // Create user in the tenant schema
     const user = userRepository.create({
       ...registerDto,
+      tenantId, // Add tenant ID
+    }) as TenantUser;
+    const savedUser = await userRepository.save(user);
+
+    return this.generateTokens(savedUser, tenantId);
+  }
+
+  /**
+   * Creates the first admin user for a tenant (SUPER_ADMIN only).
+   * @param {string} tenantId - ID of the tenant.
+   * @param {RegisterDto} registerDto - User registration data.
+   * @returns {Promise<TokenResponseDto>} Authentication tokens.
+   * @throws {ConflictException} If admin user already exists.
+   * @throws {ForbiddenException} If tenant is not active.
+   */
+  async createTenantAdmin(tenantId: string, registerDto: RegisterDto): Promise<TokenResponseDto> {
+    // Check if tenant exists and is active
+    const tenant = await this.tenantService.findOneInternal(tenantId);
+
+    if (!tenant.active) {
+      throw new ForbiddenException('Tenant account is not active');
+    }
+
+    // Get repository for the specific tenant schema
+    const schemaName: string = (tenant as any).schemaName ?? (tenant as any).schema ?? '';
+    if (!schemaName) {
+      throw new ForbiddenException('Tenant schema name is missing');
+    }
+    const userRepository = await this.tenantConnectionService.getRepository(schemaName, TenantUser);
+
+    // Check if any admin user already exists
+    const existingAdmin = await userRepository.findOne({
+      where: { roles: ['ADMIN'] },
+    });
+
+    if (existingAdmin) {
+      throw new ConflictException('Admin user already exists for this tenant');
+    }
+
+    // Create admin user in the tenant schema
+    const user = userRepository.create({
+      ...registerDto,
+      tenantId, // Add tenant ID
+      roles: ['ADMIN'], // Assign admin role
     }) as TenantUser;
     const savedUser = await userRepository.save(user);
 
@@ -98,7 +138,7 @@ export class TenantAuthService {
    */
   async login(tenantId: string, loginDto: LoginRequestDto): Promise<TokenResponseDto> {
     // Check if tenant exists and is active
-    const tenant = await this.tenantService.findOne(tenantId);
+    const tenant = await this.tenantService.findOneInternal(tenantId);
 
     if (!tenant.active) {
       throw new ForbiddenException('Tenant account is not active');
@@ -146,8 +186,13 @@ export class TenantAuthService {
   }
 
   /**
-   * Generates JWT tokens for a user.
-   * @param {TenantUser} user - User entity.
+   *
+   * @param user
+   * @param tenantId
+   */
+  /**
+   * Generates JWT tokens for a tenant user.
+   * @param {TenantUser} user - The authenticated user.
    * @param {string} tenantId - ID of the tenant.
    * @returns {Promise<TokenResponseDto>} Authentication tokens.
    * @private
@@ -156,7 +201,8 @@ export class TenantAuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      roles: user.roles.map((role) => role as AdminRole),
+      roles: user.roles,
+      permissions: [],
       tenantId,
       type: JwtPayloadType.TENANT,
     };
@@ -176,10 +222,21 @@ export class TenantAuthService {
    * @returns {Promise<TenantUser>} User entity.
    */
   async validatePayload(payload: JwtPayload): Promise<TenantUser> {
+    // Allow SUPER_ADMIN users to access tenant routes without tenant validation
+    if (payload.roles?.includes(PlatformRole.SUPER_ADMIN)) {
+      // For SUPER_ADMIN, we don't need to validate against tenant schema
+      // Return a mock user object to satisfy the return type
+      const mockUser = new TenantUser();
+      mockUser.id = payload.sub;
+      mockUser.email = payload.email;
+      mockUser.roles = payload.roles as any;
+      return mockUser;
+    }
+
     if (!payload.tenantId) {
       throw new UnauthorizedException('Tenant ID is missing in token payload');
     }
-    const tenant = await this.tenantService.findOne(String(payload.tenantId));
+    const tenant = await this.tenantService.findOneInternal(String(payload.tenantId));
     const schemaName: string = (tenant as any).schemaName ?? (tenant as any).schema ?? '';
     const userRepository = await this.tenantConnectionService.getRepository<TenantUser>(
       schemaName,
@@ -201,14 +258,16 @@ export class TenantAuthService {
    * @returns {Promise<any[]>} List of users.
    */
   async findUsers(tenantId: string): Promise<any[]> {
-    const tenant = await this.tenantService.findOne(tenantId);
+    const tenant = await this.tenantService.findOneInternal(tenantId);
 
     if (!tenant.active) {
       throw new ForbiddenException('Tenant account is not active');
     }
 
-    const users = await this.userRepository.find({
-      where: { tenantId: tenantId },
+    const schemaName: string = (tenant as any).schemaName ?? (tenant as any).schema ?? '';
+    const userRepository = await this.tenantConnectionService.getRepository(schemaName, TenantUser);
+
+    const users = await userRepository.find({
       select: ['id', 'email', 'firstName', 'lastName', 'roles', 'active', 'createdAt', 'lastLogin'],
     });
 
@@ -227,16 +286,29 @@ export class TenantAuthService {
     userId: string,
     updateData: Partial<RegisterDto>
   ): Promise<TenantUser> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId, tenantId: tenantId },
-    });
+    const tenant = await this.tenantService.findOneInternal(tenantId);
+
+    if (!tenant.active) {
+      throw new ForbiddenException('Tenant account is not active');
+    }
+
+    const schemaName: string = (tenant as any).schemaName ?? (tenant as any).schema ?? '';
+    const userRepository = await this.tenantConnectionService.getRepository(schemaName, TenantUser);
+
+    const user = (await userRepository.findOne({
+      where: { id: userId },
+    })) as TenantUser;
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    Object.assign(user, updateData);
-    return this.userRepository.save(user);
+    // Update only allowed fields
+    if (updateData.firstName) user.firstName = updateData.firstName;
+    if (updateData.lastName) user.lastName = updateData.lastName;
+    if (updateData.email) user.email = updateData.email;
+
+    return userRepository.save(user);
   }
 
   /**
@@ -246,15 +318,24 @@ export class TenantAuthService {
    * @returns {Promise<void>}
    */
   async deactivateUser(tenantId: string, userId: string): Promise<void> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId, tenantId: tenantId },
-    });
+    const tenant = await this.tenantService.findOneInternal(tenantId);
+
+    if (!tenant.active) {
+      throw new ForbiddenException('Tenant account is not active');
+    }
+
+    const schemaName: string = (tenant as any).schemaName ?? (tenant as any).schema ?? '';
+    const userRepository = await this.tenantConnectionService.getRepository(schemaName, TenantUser);
+
+    const user = (await userRepository.findOne({
+      where: { id: userId },
+    })) as TenantUser;
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
     user.active = false;
-    await this.userRepository.save(user);
+    await userRepository.save(user);
   }
 }

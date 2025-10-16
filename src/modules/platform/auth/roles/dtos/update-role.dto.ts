@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateRoleDto } from './create-role.dto';
-import { CreateRoleDto as DefCreateRoleDto } from '@definitions';
+import { CreateRoleDto as DefCreateRoleDto } from '@shared';
 
 /**
  * Data Transfer Object for updating an existing  role.

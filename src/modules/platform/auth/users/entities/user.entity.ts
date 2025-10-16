@@ -10,7 +10,7 @@ import {
   ManyToMany,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Status } from '@definitions';
+import { Status } from '../../../../../core/shared/definitions';
 import { Role } from '../../roles/entities/role.entity';
 
 /**
@@ -102,6 +102,34 @@ export class User {
   lastLogin: Date;
 
   /**
+   * Hashed refresh token for cookie-based refresh flows.
+   * Stored as a hash for security. Nullable when no refresh token issued.
+   */
+  @Column({ type: 'varchar', name: 'refresh_token_hash', nullable: true })
+  refreshTokenHash?: string;
+
+  /**
+   * User type.
+   * @type {string}
+   */
+  @Column({ type: 'varchar', default: 'LANDING' })
+  type: string;
+
+  /**
+   * Verification PIN for email verification.
+   * @type {string}
+   */
+  @Column({ type: 'varchar', name: 'verification_pin', nullable: true })
+  verificationPin?: string;
+
+  /**
+   * Expiration date for the verification PIN.
+   * @type {Date}
+   */
+  @Column({ type: 'timestamp', name: 'verification_pin_expires_at', nullable: true })
+  verificationPinExpiresAt?: Date;
+
+  /**
    * Hashes password before inserting into database.
    * @private
    */
@@ -131,5 +159,12 @@ export class User {
    */
   async comparePassword(password: string): Promise<boolean> {
     return bcrypt.compare(password, this.password);
+  }
+
+  /**
+   * Clears the stored refresh token hash (use on logout/revoke).
+   */
+  clearRefreshToken() {
+    this.refreshTokenHash = undefined;
   }
 }

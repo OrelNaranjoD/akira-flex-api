@@ -1,6 +1,5 @@
 import { SetMetadata, CustomDecorator } from '@nestjs/common';
-//@TODO Fix import to shared lib
-import { TenantRole } from '@definitions';
+import { TenantRole } from '@shared';
 
 /**
  * Decorator to set required roles for a tenant route.

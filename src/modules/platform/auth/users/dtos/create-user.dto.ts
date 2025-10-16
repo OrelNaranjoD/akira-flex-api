@@ -1,6 +1,6 @@
 import { IsString, IsEmail, IsArray, IsOptional } from 'class-validator';
 //@TODO Fix import to shared lib
-import { CreateUserDto as DefCreateUserDto } from '@definitions';
+import { CreateUserDto as DefCreateUserDto } from '@shared';
 
 /**
  * Data Transfer Object for creating a user on the .

@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { TenantUserService } from '@tenant/auth/users/tenant-user.service';
 import { TenantUser } from '@tenant/auth/users/tenant-user.entity';
-import { CreateTenantUserDto as DefCreateTenantUserDto } from '@definitions';
+import { CreateTenantUserDto as DefCreateTenantUserDto } from '@shared';
 import { UpdateTenantUserDto } from '@tenant/auth/users/dtos/update-tenant-user.dto';
 import { CreateTenantUserDto } from '@tenant/auth/users/dtos/create-tenant-user.dto';
 

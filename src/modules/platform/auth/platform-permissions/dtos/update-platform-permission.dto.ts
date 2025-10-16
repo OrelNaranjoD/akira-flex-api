@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreatePlatformPermissionDto } from './create-platform-permission.dto';
-import { CreatePlatformPermissionDto as DefCreatePlatformPermissionDto } from '@definitions';
+import { CreatePlatformPermissionDto as DefCreatePlatformPermissionDto } from '@shared';
 
 /**
  * DTO to update a platform permission.

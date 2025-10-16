@@ -1,6 +1,6 @@
 import { IsString, IsArray, ArrayNotEmpty } from 'class-validator';
 //@TODO Fix import to shared lib.
-import { CreatePlatformRoleDto as DefCreatePlatformRoleDto } from '@definitions';
+import { CreatePlatformRoleDto as DefCreatePlatformRoleDto } from '@shared';
 
 /**
  * Data Transfer Object for creating a new platform role.

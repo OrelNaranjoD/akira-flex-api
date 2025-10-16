@@ -1,6 +1,6 @@
 import { SetMetadata } from '@nestjs/common';
 //@TODO Fix import to shared lib.
-import { Permission } from '@definitions';
+import { Permission } from '@shared';
 
 /**
  * Decorator to define required  permissions for a route.

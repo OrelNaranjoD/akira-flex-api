@@ -1,6 +1,5 @@
 import { SetMetadata, CustomDecorator } from '@nestjs/common';
-//@TODO fix import path to shared lib.
-import { PlatformRole } from '@definitions';
+import { PlatformRole } from '@shared';
 
 /**
  * Decorator to set required roles for a platform route.

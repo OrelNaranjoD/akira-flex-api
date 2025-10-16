@@ -5,11 +5,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TenantAuthController } from './tenant-auth.controller';
 import { TenantJwtStrategy } from './strategies/tenant-jwt.strategy';
 import { Tenant } from '../../platform/tenants/entities/tenant.entity';
-import { TenantModule } from '../tenant.module';
 import { TenantService } from '../../platform/tenants/services/tenant.service';
 import { TenantConnectionService } from '../../platform/tenants/services/tenant-connection.service';
 import { TenantAuthService } from './tenant-auth.service';
 import { TenantUser } from './users/tenant-user.entity';
+import { TenantUserModule } from './users/tenant-user.module';
 
 /**
  * Module for tenant authentication functionality.
@@ -21,12 +21,12 @@ import { TenantUser } from './users/tenant-user.entity';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get('JWT_TENANT_SECRET', 'tenant-secret-key'),
+        secret: configService.get('JWT_SECRET', 'tenant-secret-key'),
         signOptions: { expiresIn: '1h' },
       }),
       inject: [ConfigService],
     }),
-    TenantModule,
+    TenantUserModule,
   ],
   controllers: [TenantAuthController],
   providers: [TenantService, TenantJwtStrategy, TenantAuthService, TenantConnectionService],

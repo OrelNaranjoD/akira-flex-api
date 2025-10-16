@@ -16,7 +16,7 @@ import { UpdatePlatformUserDto } from './dtos/update-platform-user.dto';
 import { PlatformAuthGuard } from '../guards/platform-auth.guard';
 import { PlatformPermissionGuard } from '../platform-permissions/guards/platform-permission.guard';
 import { RequirePlatformPermission } from '../platform-permissions/decorators/platform-permissions.decorator';
-import { PlatformPermission } from '../../../../core/definitions/definitions';
+import { PlatformPermission } from '../../../../core/shared/definitions';
 import { PlatformUser } from './decorators/platform-user.decorator';
 import type { JwtPayload } from '@orelnaranjod/flex-shared-lib';
 

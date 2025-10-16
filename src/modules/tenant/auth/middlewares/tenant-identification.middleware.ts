@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware, ForbiddenException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { TenantService } from '@platform/tenants/services/tenant.service';
+import { TenantService } from '../../../platform/tenants/services/tenant.service';
 
 /**
  * Middleware for tenant identification and validation.
@@ -27,7 +27,7 @@ export class TenantIdentificationMiddleware implements NestMiddleware {
 
     if (tenantId) {
       try {
-        const tenant = await this.tenantService.findOne(String(tenantId));
+        const tenant = await this.tenantService.findOneInternal(tenantId);
 
         if (!tenant.active) {
           throw new ForbiddenException('Tenant account is not active');
@@ -47,18 +47,18 @@ export class TenantIdentificationMiddleware implements NestMiddleware {
   /**
    * Extracts tenant ID from request.
    * @param {Request} request - HTTP request.
-   * @returns {number | null} Tenant ID or null.
+   * @returns {string | null} Tenant ID or null.
    * @private
    */
-  private extractTenantId(request: Request): number | null {
+  private extractTenantId(request: Request): string | null {
     // From URL parameters (e.g., /auth/tenant/:tenantId/register)
     if (request.params.tenantId) {
-      return parseInt(request.params.tenantId, 10);
+      return request.params.tenantId; // Keep as string to support UUIDs
     }
 
     // From header
     if (request.headers['x-tenant-id']) {
-      return parseInt(request.headers['x-tenant-id'] as string, 10);
+      return request.headers['x-tenant-id'] as string;
     }
 
     // From subdomain (e.g., repusa.akiraflex.com)

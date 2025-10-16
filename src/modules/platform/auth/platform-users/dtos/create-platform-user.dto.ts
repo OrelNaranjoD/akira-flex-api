@@ -1,6 +1,6 @@
 import { IsString, IsEmail, IsArray, IsOptional } from 'class-validator';
 //@TODO Fix import to shared lib
-import { CreatePlatformUserDto as DefCreatePlatformUserDto } from '@definitions';
+import { CreatePlatformUserDto as DefCreatePlatformUserDto } from '@shared';
 
 /**
  * Data Transfer Object for creating a user on the platform.

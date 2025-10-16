@@ -1,17 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { PlatformAuthService } from '@platform/auth/platform-auth.service';
-import { PlatformUser } from '@platform/auth/platform-users/entities/platform-user.entity';
-import { User } from '@platform/auth/users/entities/user.entity';
-import { LoginRequestDto } from '@platform/auth/dtos/login-request.dto';
-import { RegisterDto } from '@platform/auth/dtos/register.dto';
-import { TokenService } from '@core/token/token.service';
-import { MailService } from '@core/mail/mail.service';
+import { PlatformAuthService } from '../../../../src/modules/platform/auth/platform-auth.service';
+import { PlatformUser } from '../../../../src/modules/platform/auth/platform-users/entities/platform-user.entity';
+import { User } from '../../../../src/modules/platform/auth/users/entities/user.entity';
+import { Role } from '../../../../src/modules/platform/auth/roles/entities/role.entity';
+import { LoginRequestDto } from '../../../../src/modules/platform/auth/dtos/login-request.dto';
+import { RegisterDto } from '../../../../src/modules/platform/auth/dtos/register.dto';
+import { TokenService } from '../../../../src/core/token/token.service';
+import { MailService } from '../../../../src/core/mail/mail.service';
 
 describe('PlatformAuthService', () => {
   let service: PlatformAuthService;
   let platformUserRepo: any;
   let userRepo: any;
+  let roleRepo: any;
   let tokenService: any;
   let mailService: any;
 
@@ -22,11 +24,16 @@ describe('PlatformAuthService', () => {
       save: jest.fn(),
     };
     userRepo = { findOne: jest.fn(), create: jest.fn(), save: jest.fn() };
+    roleRepo = { findOne: jest.fn() };
     tokenService = {
-      generateAccessToken: jest.fn().mockResolvedValue({
+      generateAccessToken: jest.fn().mockReturnValue({
         accessToken: 'token',
         expiresIn: 3600,
         tokenType: 'Bearer',
+      }),
+      generateAndHashRefreshToken: jest.fn().mockResolvedValue({
+        refreshToken: 'refresh_token',
+        refreshTokenHash: 'hashed_refresh_token',
       }),
     };
     mailService = { send: jest.fn() };
@@ -36,6 +43,7 @@ describe('PlatformAuthService', () => {
         PlatformAuthService,
         { provide: getRepositoryToken(PlatformUser), useValue: platformUserRepo },
         { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: getRepositoryToken(Role), useValue: roleRepo },
         { provide: TokenService, useValue: tokenService },
         { provide: MailService, useValue: mailService },
       ],
@@ -52,6 +60,8 @@ describe('PlatformAuthService', () => {
       lastName: 'B',
     } as any;
     platformUserRepo.findOne.mockResolvedValue(null);
+    const superAdminRole = { id: '1', name: 'SUPER_ADMIN' };
+    roleRepo.findOne.mockResolvedValue(superAdminRole);
     const user = {
       id: '1',
       email: dto.email,
@@ -81,9 +91,12 @@ describe('PlatformAuthService', () => {
     platformUserRepo.save.mockResolvedValue({ ...user, lastLogin: new Date() });
 
     await expect(service.login(dto)).resolves.toEqual({
-      accessToken: 'token',
-      expiresIn: 3600,
-      tokenType: 'Bearer',
+      tokenResponse: {
+        accessToken: 'token',
+        expiresIn: 3600,
+        tokenType: 'Bearer',
+      },
+      refreshToken: 'refresh_token',
     });
   });
 });

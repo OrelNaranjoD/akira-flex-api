@@ -1,5 +1,5 @@
 import { IsString, IsOptional } from 'class-validator';
-import { CreatePermissionDto as DefCreatePermissionDto } from '@definitions';
+import { CreatePermissionDto as DefCreatePermissionDto } from '@shared';
 
 /**
  * DTO to create a  permission.

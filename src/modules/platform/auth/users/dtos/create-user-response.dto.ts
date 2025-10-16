@@ -1,4 +1,4 @@
-import { CreateUserResponseDto as DefCreateUserResponseDto } from '@definitions';
+import { CreateUserResponseDto as DefCreateUserResponseDto } from '@shared';
 
 /**
  * DTO returned when a user is created.

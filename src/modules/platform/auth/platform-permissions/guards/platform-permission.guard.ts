@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PlatformPermission } from '@definitions';
+import { PlatformPermission } from '@shared';
 
 /**
  * Guard for permission-based authorization in platform context.

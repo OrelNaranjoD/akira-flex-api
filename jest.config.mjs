@@ -9,6 +9,8 @@ export default {
   coverageDirectory: './coverage',
   coveragePathIgnorePatterns: ['/node_modules/', '/dist/'],
   moduleNameMapper: {
+    '^@shared$': '<rootDir>/src/core/shared/index.ts',
+    '^@shared/(.*)$': '<rootDir>/src/core/shared/$1',
     '^@core/(.*)$': '<rootDir>/src/core/$1',
     '^@definitions$': '<rootDir>/src/core/definitions/definitions.ts',
     '^@platform/(.*)$': '<rootDir>/src/modules/platform/$1',

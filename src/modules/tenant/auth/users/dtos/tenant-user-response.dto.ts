@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { TenantUserResponseDto as DefTenantUserResponseDto } from '@definitions';
+import { TenantUserResponseDto as DefTenantUserResponseDto } from '@shared';
 
 /**
  * Data Transfer Object for tenant user response.

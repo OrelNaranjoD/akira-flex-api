@@ -9,10 +9,6 @@ import { TenantService } from '../../../platform/tenants/services/tenant.service
  */
 @Injectable()
 export class TenantIdentificationMiddleware implements NestMiddleware {
-  /**
-   * Creates an instance of TenantIdentificationMiddleware.
-   * @param {TenantService} tenantService - Tenant service.
-   */
   constructor(private readonly tenantService: TenantService) {}
 
   /**
@@ -22,52 +18,72 @@ export class TenantIdentificationMiddleware implements NestMiddleware {
    * @param {NextFunction} next - Next function.
    */
   async use(request: Request, response: Response, next: NextFunction) {
-    // Extract tenant ID from URL params, header, or subdomain
-    const tenantId = this.extractTenantId(request);
+    try {
+      const tenantId = await this.extractTenantId(request);
 
-    if (tenantId) {
-      try {
+      if (tenantId) {
         const tenant = await this.tenantService.findOneInternal(tenantId);
 
         if (!tenant.active) {
           throw new ForbiddenException('Tenant account is not active');
         }
 
-        // Store tenant information in request for later use
         request['tenant'] = tenant;
         next();
-      } catch {
-        throw new ForbiddenException('Invalid tenant');
+      } else {
+        next();
       }
-    } else {
-      next();
+    } catch {
+      throw new ForbiddenException('Invalid tenant');
     }
   }
 
   /**
    * Extracts tenant ID from request.
+   * Supports multiple methods:
+   * - URL parameters: /auth/tenant/:tenantId/login
+   * - Headers: x-tenant-id
+   * - Subdomain: akiraflex.domain.com (production)
+   * - Headers for localhost: x-tenant-subdomain
+   * - Query params for localhost: ?tenant=akiraflex.
    * @param {Request} request - HTTP request.
-   * @returns {string | null} Tenant ID or null.
+   * @returns {Promise<string | null>} Tenant ID or null.
    * @private
    */
-  private extractTenantId(request: Request): string | null {
-    // From URL parameters (e.g., /auth/tenant/:tenantId/register)
+  private async extractTenantId(request: Request): Promise<string | null> {
     if (request.params.tenantId) {
-      return request.params.tenantId; // Keep as string to support UUIDs
+      return request.params.tenantId;
     }
 
-    // From header
     if (request.headers['x-tenant-id']) {
       return request.headers['x-tenant-id'] as string;
     }
 
-    // From subdomain (e.g., repusa.akiraflex.com)
     const host = request.get('host');
-    const subdomain = host?.split('.')[0];
+    if (host) {
+      let subdomainToUse: string | null = null;
 
-    if (subdomain && subdomain !== 'www' && subdomain !== 'api') {
-      // We'll need to map subdomain to tenant ID
-      return null; // This would require additional logic
+      if (host.includes('localhost')) {
+        if (request.headers['x-tenant-subdomain']) {
+          subdomainToUse = request.headers['x-tenant-subdomain'] as string;
+        } else if (request.query['tenant']) {
+          subdomainToUse = request.query['tenant'] as string;
+        }
+      } else {
+        const subdomain = host.split('.')[0];
+        if (subdomain && subdomain !== 'www' && subdomain !== 'api') {
+          subdomainToUse = subdomain;
+        }
+      }
+
+      if (subdomainToUse) {
+        try {
+          const tenant = await this.tenantService.findBySubdomainInternal(subdomainToUse);
+          return tenant.id;
+        } catch {
+          return null;
+        }
+      }
     }
 
     return null;

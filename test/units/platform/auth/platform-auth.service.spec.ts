@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { PlatformAuthService } from '../../../../src/modules/platform/auth/platform-auth.service';
 import { PlatformUser } from '../../../../src/modules/platform/auth/platform-users/entities/platform-user.entity';
 import { User } from '../../../../src/modules/platform/auth/users/entities/user.entity';
@@ -16,6 +17,7 @@ describe('PlatformAuthService', () => {
   let roleRepo: any;
   let tokenService: any;
   let mailService: any;
+  let configService: any;
 
   beforeEach(async () => {
     platformUserRepo = {
@@ -37,6 +39,12 @@ describe('PlatformAuthService', () => {
       }),
     };
     mailService = { send: jest.fn() };
+    configService = {
+      get: jest.fn().mockImplementation((key: string) => {
+        if (key === 'NODE_ENV') return 'test';
+        return undefined;
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -46,6 +54,7 @@ describe('PlatformAuthService', () => {
         { provide: getRepositoryToken(Role), useValue: roleRepo },
         { provide: TokenService, useValue: tokenService },
         { provide: MailService, useValue: mailService },
+        { provide: ConfigService, useValue: configService },
       ],
     }).compile();
 

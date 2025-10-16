@@ -1,130 +1,64 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { PlatformUser } from '../../../modules/platform/auth/platform-users/entities/platform-user.entity';
-import { PlatformPermission } from '../../../modules/platform/auth/platform-permissions/entities/platform-permission.entity';
-import { PlatformRole } from '../../../modules/platform/auth/platform-roles/entities/platform-role.entity';
-import { Role } from '../../../modules/platform/auth/roles/entities/role.entity';
-import { Permission } from '../../../modules/platform/auth/permissions/entities/permission.entity';
-import { Role as RoleEnum } from '../../shared/definitions';
+import { PlatformPermissionsSeeder } from './platform/platform-permissions.seeder';
+import { PlatformRolesSeeder } from './platform/platform-roles.seeder';
+import { PlatformUsersSeeder } from './platform/platform-users.seeder';
+import { BusinessRolesSeeder } from './platform/business-roles.seeder';
+import { TenantPermissionsSeeder } from './tenant/tenant-permissions.seeder';
+import { AkiraFlexTenantSeeder } from './tenant/akiraflex-tenant.seeder';
+import { TestCorpTenantSeeder } from './tenant/testcorp-tenant.seeder';
+import { MaestranzasUnidosTenantSeeder } from './tenant/maestranzas-unidos-tenant.seeder';
 
 /**
- * Seeder that creates the initial platform administrator user in platform_users if the table is empty.
- * This ensures that the platform always has an admin user after a database reset or first initialization.
+ * Main seeder that orchestrates all database seeding operations.
+ * This seeder maintains separation of concerns by delegating to specialized seeders.
  */
 @Injectable()
 export class InitialSeeder {
   private readonly logger = new Logger(InitialSeeder.name);
 
   constructor(
-    private readonly dataSource: DataSource,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly platformPermissionsSeeder: PlatformPermissionsSeeder,
+    private readonly platformRolesSeeder: PlatformRolesSeeder,
+    private readonly platformUsersSeeder: PlatformUsersSeeder,
+    private readonly businessRolesSeeder: BusinessRolesSeeder,
+    private readonly tenantPermissionsSeeder: TenantPermissionsSeeder,
+    private readonly akiraFlexTenantSeeder: AkiraFlexTenantSeeder,
+    private readonly testCorpTenantSeeder: TestCorpTenantSeeder,
+    private readonly maestranzasUnidosTenantSeeder: MaestranzasUnidosTenantSeeder
   ) {}
 
   /**
-   * Creates the initial platform administrator user only if the platform_users table is empty.
-   * This method is useful for development and first-time deployments, ensuring that protected routes are accessible.
+   * Runs all seeding operations in the correct order.
    */
   async seed(): Promise<void> {
-    const count = await this.dataSource.getRepository(PlatformUser).count();
-    const envPassword = this.configService.get<string>('SUPER_ADMIN_PASSWORD');
-    if (count === 0) {
-      // Create initial permissions
-      const permissionRepo = this.dataSource.getRepository(PlatformPermission);
-      const tenantPermissionRepo = this.dataSource.getRepository(Permission);
-      const roleRepo = this.dataSource.getRepository(PlatformRole);
-
-      const perms = [
-        { code: 'PERMISSION_CREATE', description: 'Create permissions' },
-        { code: 'PERMISSION_VIEW_ALL', description: 'View all permissions' },
-        { code: 'PERMISSION_UPDATE', description: 'Update permissions' },
-        { code: 'PERMISSION_DELETE', description: 'Delete permissions' },
-        { code: 'USER_ROLE_VIEW_OWN', description: 'View own user role' },
-        { code: 'USER_VIEW', description: 'View user details' },
-        { code: 'USER_CREATE', description: 'Create new users' },
-        { code: 'USER_UPDATE', description: 'Update existing users' },
-        { code: 'USER_DELETE', description: 'Delete users' },
-        { code: 'AUDIT_VIEW_ALL', description: 'View all audit logs' },
-        { code: 'AUDIT_VIEW', description: 'View audit logs' },
-        { code: 'AUDIT_TENANT_VIEW', description: 'View tenant audit logs' },
-        { code: 'ROLE_VIEW_ALL', description: 'View all roles' },
-        { code: 'ROLE_VIEW_OWN', description: 'View own role' },
-        { code: 'ROLE_CREATE', description: 'Create new roles' },
-        { code: 'ROLE_UPDATE', description: 'Update existing roles' },
-        { code: 'ROLE_DELETE', description: 'Delete roles' },
-        { code: 'AUTH_REGISTER', description: 'Register platform admins' },
-        { code: 'TENANT_CREATE', description: 'Create tenants' },
-        { code: 'TENANT_UPDATE', description: 'Update tenants' },
-        { code: 'TENANT_DISABLE', description: 'Disable tenants' },
-        { code: 'TENANT_DELETE', description: 'Delete tenants' },
-        { code: 'TENANT_RESTORE', description: 'Restore tenants' },
-        { code: 'TENANT_VIEW', description: 'View tenant details' },
-        { code: 'TENANT_VIEW_ALL', description: 'View all tenants' },
-      ];
-
-      const tenantPerms = [
-        { code: 'USER_VIEW', description: 'View user details' },
-        { code: 'USER_VIEW_ALL', description: 'View all users' },
-        { code: 'USER_ROLE_VIEW_OWN', description: 'View own user role' },
-        { code: 'AUTH_REGISTER', description: 'Register' },
-        { code: 'AUTH_LOGIN', description: 'Login' },
-        { code: 'ROLE_VIEW', description: 'View roles' },
-        { code: 'ROLE_VIEW_ALL', description: 'View all roles' },
-        { code: 'PERMISSION_VIEW', description: 'View permissions' },
-        { code: 'PERMISSION_VIEW_ALL', description: 'View all permissions' },
-        { code: 'TENANT_VIEW', description: 'View tenant' },
-        { code: 'TENANT_VIEW_ALL', description: 'View all tenants' },
-        { code: 'AUDIT_VIEW', description: 'View audit' },
-        { code: 'AUDIT_VIEW_ALL', description: 'View all audits' },
-        { code: 'AUDIT_TENANT_VIEW', description: 'View tenant audit' },
-      ];
-
-      const savedPerms = await permissionRepo.save(perms);
-      const existingTenantPerms = await tenantPermissionRepo.find();
-      const tenantPermsToSave = tenantPerms.filter(
-        (tp) => !existingTenantPerms.some((ep) => ep.code === tp.code)
-      );
-      const savedTenantPerms =
-        tenantPermsToSave.length > 0
-          ? await tenantPermissionRepo.save(tenantPermsToSave)
-          : existingTenantPerms;
-
-      // Create roles and assign permissions business roles for tenant
-      const businessRoleRepo = this.dataSource.getRepository(Role);
-      const roles = Object.values(RoleEnum).map((roleName) => ({
-        name: roleName,
-        permissions: roleName === 'USER' || roleName === 'OWNER' ? savedTenantPerms : [],
-      }));
-      await businessRoleRepo.save(roles);
-
-      // Create roles and assign permissions
-      const superAdminRole = roleRepo.create({
-        name: 'SUPER_ADMIN',
-        permissions: savedPerms,
-      } as unknown as Partial<PlatformRole>);
-
-      const _auditor = savedPerms.find((p: any) => p.code === 'PERMISSION_VIEW_ALL');
-      const auditorPerm = _auditor as PlatformPermission;
-      const auditorRole = roleRepo.create({
-        name: 'AUDITOR',
-        permissions: [auditorPerm],
-      } as unknown as Partial<PlatformRole>);
-
-      const savedRoles = await roleRepo.save([superAdminRole, auditorRole]);
-
-      // Create the initial admin user for the platform and assign SUPER_ADMIN role
-      const admin = new PlatformUser();
-      admin.email = 'admin@akiraflex.com';
-      admin.password = envPassword!;
-      admin.firstName = 'Platform';
-      admin.lastName = 'Administrator';
-      admin.phone = '+525566667777';
-      admin.roles = [savedRoles.find((r: any) => r.name === 'SUPER_ADMIN')];
-      admin.active = true;
-      await this.dataSource.getRepository(PlatformUser).save(admin);
-      this.logger.log('Platform administrator user created with initial roles and permissions.');
+    if (process.env.NODE_ENV === 'development') {
+      await this.createInitialData();
     } else {
-      this.logger.log('Platform users already exist, no action taken.');
+      await this.createInitialData();
+    }
+  }
+
+  /**
+   * Orchestrates the creation of all initial data.
+   * @private
+   */
+  private async createInitialData(): Promise<void> {
+    try {
+      this.logger.log('Starting initial database seeding...');
+      await this.platformPermissionsSeeder.seed();
+      await this.platformRolesSeeder.seed();
+      await this.platformUsersSeeder.seed();
+      await this.tenantPermissionsSeeder.seed();
+      await this.businessRolesSeeder.seed();
+      await this.akiraFlexTenantSeeder.seed();
+      await this.testCorpTenantSeeder.seed();
+      await this.maestranzasUnidosTenantSeeder.seed();
+      this.logger.log('Initial database seeding completed successfully.');
+    } catch (error) {
+      this.logger.error('Failed to complete initial seeding:', error);
+      throw error;
     }
   }
 }

@@ -100,6 +100,13 @@ export class TenantUser implements TenantUserEntity {
   lastLogin: Date;
 
   /**
+   * Hashed refresh token for token rotation.
+   * @type {string}
+   */
+  @Column({ type: 'varchar', name: 'refresh_token_hash', nullable: true })
+  refreshTokenHash: string | null;
+
+  /**
    * Hashes password before inserting into database.
    * @private
    */

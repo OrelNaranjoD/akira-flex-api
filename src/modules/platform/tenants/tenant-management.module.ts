@@ -2,15 +2,14 @@ import { JwtModule } from '@nestjs/jwt';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TenantService } from './services/tenant.service';
-import { TenantController } from './tenant.controller';
+import { TenantManagementController } from './tenant-management.controller';
 import { Tenant } from './entities/tenant.entity';
 import { TenantConnectionService } from './services/tenant-connection.service';
-import { TenantAuthService } from '../../tenant/auth/tenant-auth.service';
 import { TenantUser } from '../../tenant/auth/users/tenant-user.entity';
 
 /**
  * Module for tenant management functionality.
- * @module TenantModule
+ * @module TenantManagementModule
  */
 @Module({
   imports: [
@@ -20,8 +19,8 @@ import { TenantUser } from '../../tenant/auth/users/tenant-user.entity';
       signOptions: { expiresIn: '1h' },
     }),
   ],
-  controllers: [TenantController],
-  providers: [TenantService, TenantAuthService, TenantConnectionService],
-  exports: [TenantService],
+  controllers: [TenantManagementController],
+  providers: [TenantService, TenantConnectionService],
+  exports: [TenantService, TenantConnectionService],
 })
-export class TenantModule {}
+export class TenantManagementModule {}

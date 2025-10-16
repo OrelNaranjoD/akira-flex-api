@@ -1,12 +1,12 @@
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { TenantUser } from '../../modules/tenant/auth/users/tenant-user.entity';
+import { join } from 'path';
 
 /**
- * Factory function to create tenant-specific data sources.
- * @param {string} schemaName - Name of the tenant schema.
- * @param {ConfigService} configService - Configuration service.
- * @returns {DataSourceOptions} Data source configuration.
+ * Creates DataSourceOptions for a specific tenant schema.
+ * @param schemaName The schema name for the tenant.
+ * @param configService The configuration service instance.
+ * @returns DataSourceOptions configured for the tenant schema.
  */
 export function createMultiTenantDataSourceOptions(
   schemaName: string,
@@ -16,21 +16,26 @@ export function createMultiTenantDataSourceOptions(
   if (!url) {
     throw new Error('DATABASE_URL must be defined in environment variables');
   }
+
+  const entitiesPath = join(__dirname, '..', '..', 'modules', 'tenant', '**', '*.entity.{ts,js}');
+  const typeormLogging = configService.get<string>('TYPEORM_LOGGING');
+  const isLoggerEnabled = typeormLogging === 'true';
+
   return {
     type: 'postgres',
     url,
     schema: schemaName,
-    entities: [TenantUser],
+    entities: [entitiesPath],
     synchronize: configService.get('NODE_ENV') !== 'production',
-    logging: configService.get('NODE_ENV') !== 'production',
+    logging: isLoggerEnabled,
   };
 }
 
 /**
- * Multi-tenant data source factory.
- * @param {string} schemaName - Name of the tenant schema.
- * @param {ConfigService} configService - Configuration service.
- * @returns {Promise<DataSource>} Tenant data source.
+ * Creates and initializes a DataSource for a specific tenant schema.
+ * @param schemaName The schema name for the tenant.
+ * @param configService The configuration service instance.
+ * @returns A promise that resolves to the initialized DataSource.
  */
 export async function createMultiTenantDataSource(
   schemaName: string,

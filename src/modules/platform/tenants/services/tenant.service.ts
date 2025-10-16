@@ -154,6 +154,35 @@ export class TenantService {
   }
 
   /**
+   * Retrieves a tenant by subdomain (internal use - returns full entity).
+   * @param {string} subdomain - Subdomain of the tenant to retrieve.
+   * @returns {Promise<Tenant>} The requested tenant entity.
+   * @throws {NotFoundException} If tenant is not found.
+   */
+  async findBySubdomainInternal(subdomain: string): Promise<Tenant> {
+    const tenant = await this.tenantRepository.findOne({
+      where: { subdomain: subdomain.toLowerCase() },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant with subdomain ${subdomain} not found`);
+    }
+
+    return tenant;
+  }
+
+  /**
+   * Retrieves a tenant by subdomain.
+   * @param {string} subdomain - Subdomain of the tenant to retrieve.
+   * @returns {Promise<TenantResponseDto>} The requested tenant data.
+   * @throws {NotFoundException} If tenant is not found.
+   */
+  async findBySubdomain(subdomain: string): Promise<TenantResponseDto> {
+    const tenant = await this.findBySubdomainInternal(subdomain);
+    return this.mapToResponseDto(tenant);
+  }
+
+  /**
    * Updates a specific tenant.
    * @param {string} id - ID of the tenant to update.
    * @param {UpdateTenantDto} updateTenantDto - Data for updating the tenant.

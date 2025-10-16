@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { LoginRequestDto } from './dtos/login-request.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { RegisterDto } from './dtos/register.dto';
@@ -38,6 +39,7 @@ export class PlatformAuthService {
    * @param {Repository<Role>} roleRepository - Repository for roles.
    * @param {TokenService} tokenService - Service for generating and verifying tokens.
    * @param {MailService} mailService - Service for sending emails.
+   * @param {ConfigService} configService - Service for accessing configuration.
    */
   constructor(
     @InjectRepository(PlatformUser)
@@ -47,7 +49,8 @@ export class PlatformAuthService {
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
     private readonly tokenService: TokenService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly configService: ConfigService
   ) {}
 
   /**
@@ -67,7 +70,7 @@ export class PlatformAuthService {
     const verificationPin = this.generateVerificationPin();
     Logger.debug(`Generated verification PIN for ${user.email}: ${verificationPin}`);
     const hashedPin = await this.hashPin(verificationPin);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     user.verificationPin = hashedPin;
     user.verificationPinExpiresAt = expiresAt;
@@ -244,7 +247,6 @@ export class PlatformAuthService {
     });
 
     if (user && (await user.comparePassword(password))) {
-      console.log('validateUser - found User:', { email, id: user.id, type: (user as any).type });
       return user;
     }
 
@@ -253,11 +255,9 @@ export class PlatformAuthService {
     });
 
     if (user && (await user.comparePassword(password))) {
-      console.log('validateUser - found PlatformUser:', { email, id: user.id, type: 'PLATFORM' });
       return user;
     }
 
-    console.log('validateUser - user not found or invalid password:', email);
     return null;
   }
 
@@ -515,11 +515,12 @@ export class PlatformAuthService {
     const refreshToken = String(req.cookies?.refresh_token || '');
     const result = await this.logout(refreshToken || undefined, userId);
 
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
     const clearOptions = {
       path: '/',
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
+      secure: isProduction,
+      sameSite: isProduction ? ('none' as const) : ('lax' as const),
     };
     res.clearCookie('refresh_token', clearOptions);
     return result;

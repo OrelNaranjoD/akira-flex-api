@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityTarget, ObjectLiteral, Repository } from 'typeorm';
 import { createMultiTenantDataSource } from '../../../../core/database/multi-tenant-data-source';
 
 /**
@@ -36,10 +36,13 @@ export class TenantConnectionService implements OnModuleDestroy {
   /**
    * Gets the repository for a specific tenant.
    * @param {string} schemaName - Name of the tenant schema.
-   * @param {Function} entity - Entity class.
+   * @param {EntityTarget<T>} entity - Entity class, schema, or name.
    * @returns {Promise<Repository<any>>} Entity repository.
    */
-  async getRepository<T>(schemaName: string, entity: new () => T) {
+  async getRepository<T extends ObjectLiteral>(
+    schemaName: string,
+    entity: EntityTarget<T>
+  ): Promise<Repository<T>> {
     const dataSource = await this.getTenantDataSource(schemaName);
     return dataSource.getRepository(entity);
   }

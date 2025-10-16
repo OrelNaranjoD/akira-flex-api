@@ -18,7 +18,7 @@ import { TenantAuthService } from '../../tenant/auth/tenant-auth.service';
 import { PlatformAuthGuard } from '../auth/guards/platform-auth.guard';
 import { RequirePlatformPermission } from '../auth/platform-permissions/decorators/platform-permissions.decorator';
 import { PlatformPermissionGuard } from '../auth/platform-permissions/guards/platform-permission.guard';
-import { PlatformPermission } from '@shared';
+import { PlatformPermission } from '../../../core/shared/definitions';
 
 /**
  * Controller for handling tenant management operations.

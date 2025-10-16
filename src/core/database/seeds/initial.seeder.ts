@@ -5,7 +5,8 @@ import { PlatformUser } from '../../../modules/platform/auth/platform-users/enti
 import { PlatformPermission } from '../../../modules/platform/auth/platform-permissions/entities/platform-permission.entity';
 import { PlatformRole } from '../../../modules/platform/auth/platform-roles/entities/platform-role.entity';
 import { Role } from '../../../modules/platform/auth/roles/entities/role.entity';
-import { Role as RoleEnum } from '@shared';
+import { Permission } from '../../../modules/platform/auth/permissions/entities/permission.entity';
+import { Role as RoleEnum } from '../../shared/definitions';
 
 /**
  * Seeder that creates the initial platform administrator user in platform_users if the table is empty.
@@ -30,6 +31,7 @@ export class InitialSeeder {
     if (count === 0) {
       // Create initial permissions
       const permissionRepo = this.dataSource.getRepository(PlatformPermission);
+      const tenantPermissionRepo = this.dataSource.getRepository(Permission);
       const roleRepo = this.dataSource.getRepository(PlatformRole);
 
       const perms = [
@@ -50,15 +52,48 @@ export class InitialSeeder {
         { code: 'ROLE_CREATE', description: 'Create new roles' },
         { code: 'ROLE_UPDATE', description: 'Update existing roles' },
         { code: 'ROLE_DELETE', description: 'Delete roles' },
+        { code: 'AUTH_REGISTER', description: 'Register platform admins' },
+        { code: 'TENANT_CREATE', description: 'Create tenants' },
+        { code: 'TENANT_UPDATE', description: 'Update tenants' },
+        { code: 'TENANT_DISABLE', description: 'Disable tenants' },
+        { code: 'TENANT_DELETE', description: 'Delete tenants' },
+        { code: 'TENANT_RESTORE', description: 'Restore tenants' },
+        { code: 'TENANT_VIEW', description: 'View tenant details' },
+        { code: 'TENANT_VIEW_ALL', description: 'View all tenants' },
+      ];
+
+      const tenantPerms = [
+        { code: 'USER_VIEW', description: 'View user details' },
+        { code: 'USER_VIEW_ALL', description: 'View all users' },
+        { code: 'USER_ROLE_VIEW_OWN', description: 'View own user role' },
+        { code: 'AUTH_REGISTER', description: 'Register' },
+        { code: 'AUTH_LOGIN', description: 'Login' },
+        { code: 'ROLE_VIEW', description: 'View roles' },
+        { code: 'ROLE_VIEW_ALL', description: 'View all roles' },
+        { code: 'PERMISSION_VIEW', description: 'View permissions' },
+        { code: 'PERMISSION_VIEW_ALL', description: 'View all permissions' },
+        { code: 'TENANT_VIEW', description: 'View tenant' },
+        { code: 'TENANT_VIEW_ALL', description: 'View all tenants' },
+        { code: 'AUDIT_VIEW', description: 'View audit' },
+        { code: 'AUDIT_VIEW_ALL', description: 'View all audits' },
+        { code: 'AUDIT_TENANT_VIEW', description: 'View tenant audit' },
       ];
 
       const savedPerms = await permissionRepo.save(perms);
+      const existingTenantPerms = await tenantPermissionRepo.find();
+      const tenantPermsToSave = tenantPerms.filter(
+        (tp) => !existingTenantPerms.some((ep) => ep.code === tp.code)
+      );
+      const savedTenantPerms =
+        tenantPermsToSave.length > 0
+          ? await tenantPermissionRepo.save(tenantPermsToSave)
+          : existingTenantPerms;
 
       // Create roles and assign permissions business roles for tenant
       const businessRoleRepo = this.dataSource.getRepository(Role);
       const roles = Object.values(RoleEnum).map((roleName) => ({
         name: roleName,
-        permissions: roleName === 'OWNER' ? savedPerms : [],
+        permissions: roleName === 'USER' || roleName === 'OWNER' ? savedTenantPerms : [],
       }));
       await businessRoleRepo.save(roles);
 

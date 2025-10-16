@@ -19,7 +19,6 @@ import { RequirePermission } from '../permissions/decorators/permissions.decorat
 import { Permission } from '../../../../core/shared/definitions';
 import { User } from './decorators/user.decorator';
 import type { JwtPayload } from '@orelnaranjod/flex-shared-lib';
-import { Public } from '../../../../core/decorators/public.decorator';
 
 /**
  * Controller for managing  users.
@@ -35,7 +34,7 @@ export class UserController {
    * @param {CreateUserDto} createUserDto - User creation data.
    * @returns {Promise<User>} Created user.
    */
-  @Public()
+  @RequirePermission(Permission.USER_CREATE)
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createUserDto: CreateUserDto) {

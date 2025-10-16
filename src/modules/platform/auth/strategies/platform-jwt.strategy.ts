@@ -1,8 +1,9 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { JwtPayload } from '@shared';
+import type { JwtPayload } from '../../../../core/shared/definitions';
+import { JwtPayloadType } from '../../../../core/shared/definitions';
 import { PlatformAuthService } from '../platform-auth.service';
 
 /**
@@ -35,6 +36,9 @@ export class PlatformJwtStrategy extends PassportStrategy(Strategy, 'platform-jw
    * @returns {Promise<JwtPayload>} Validated payload.
    */
   async validate(payload: JwtPayload): Promise<JwtPayload> {
+    if (payload.type !== JwtPayloadType.PLATFORM) {
+      throw new UnauthorizedException('Invalid token type for platform access');
+    }
     // Verify user exists and is active
     await this.authService.validatePayload(payload);
 

@@ -254,8 +254,8 @@ export enum TenantPermission {
 export interface JwtPayload {
   sub: string;
   email: string;
-  roles: PlatformRole[];
-  permissions: PlatformPermission[];
+  roles: string[];
+  permissions: string[];
   tenantId?: string;
   type: JwtPayloadType;
 }
@@ -280,6 +280,7 @@ export interface JwtRefreshPayload {
 
 export enum JwtPayloadType {
   PLATFORM = 'PLATFORM',
+  LANDING = 'LANDING',
   TENANT = 'TENANT',
   EMAIL_VERIFICATION = 'EMAIL_VERIFICATION',
   PASSWORD_RESET = 'PASSWORD_RESET',

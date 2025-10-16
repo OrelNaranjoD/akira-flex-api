@@ -7,8 +7,7 @@ import {
   JwtEmailVerificationPayload,
   JwtPasswordResetPayload,
   Status,
-  PlatformRole,
-} from '@shared';
+} from '../shared/definitions';
 import { User } from '../../modules/platform/auth/users/entities/user.entity';
 import { PlatformUser } from '../../modules/platform/auth/platform-users/entities/platform-user.entity';
 import { TokenResponseDto } from '../../modules/platform/auth/dtos/token-response.dto';
@@ -120,18 +119,43 @@ export class TokenService {
    * @throws {UnauthorizedException} - If the user is not verified (for User entity).
    */
   generateAccessToken(user: PlatformUser | User): TokenResponseDto {
-    const permissions = user.roles
+    let permissions = user.roles
       .flatMap((role) => role.permissions.map((p) => p.code))
       .filter((value, index, self) => self.indexOf(value) === index);
-    if ('status' in user && user.status !== Status.ACTIVE) {
+    const userType = 'active' in user ? 'PLATFORM' : 'LANDING';
+    console.log('generateAccessToken - user type detection:', {
+      hasActive: 'active' in user,
+      userType: (user as any).type,
+      determinedType: userType,
+    });
+    if (userType === 'LANDING' && (user as any).status !== Status.ACTIVE) {
       throw new UnauthorizedException('User not verified');
+    }
+    if (userType === 'LANDING') {
+      const readPermissions = [
+        'USER_VIEW',
+        'USER_VIEW_ALL',
+        'USER_ROLE_VIEW_OWN',
+        'AUTH_REGISTER',
+        'AUTH_LOGIN',
+        'ROLE_VIEW',
+        'ROLE_VIEW_ALL',
+        'PERMISSION_VIEW',
+        'PERMISSION_VIEW_ALL',
+        'TENANT_VIEW',
+        'TENANT_VIEW_ALL',
+        'AUDIT_VIEW',
+        'AUDIT_VIEW_ALL',
+        'AUDIT_TENANT_VIEW',
+      ];
+      permissions = [...new Set([...permissions, ...readPermissions])];
     }
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      roles: user.roles as PlatformRole[],
+      roles: user.roles.map((r) => r.name),
       permissions,
-      type: JwtPayloadType.PLATFORM,
+      type: userType === 'PLATFORM' ? JwtPayloadType.PLATFORM : JwtPayloadType.LANDING,
     };
     const accessToken = this.generateToken(payload, { expiresIn: '15m' });
     return {

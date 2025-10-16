@@ -6,7 +6,7 @@ import { Role } from '../roles/entities/role.entity';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { UserResponseDto } from './dtos/user-response.dto';
-import { Status } from '@shared';
+import { Status } from '../../../../core/shared/definitions';
 import { mapUserToResponse } from './mappers/user-response.mapper';
 
 /**

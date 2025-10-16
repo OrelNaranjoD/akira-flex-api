@@ -16,7 +16,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@shared": ["src/core/shared/index"],
+      "@shared": ["src/core/shared"],
+      "@shared/*": ["src/core/shared/*"],
       "@tenant/*": ["src/modules/tenant/*"],
       "@platform/*": ["src/modules/platform/*"]
     },

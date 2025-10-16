@@ -16,11 +16,13 @@ import {
   JwtRefreshPayload,
   Status,
   RegisterResponseDto,
-} from '@shared';
+} from '../../../core/shared/definitions';
 import { User } from './users/entities/user.entity';
 import { MailService } from '../../../core/mail/mail.service';
 import { TokenService } from '../../../core/token/token.service';
 import type { Request, Response } from 'express';
+import { Logger } from '@nestjs/common';
+import { Role } from './roles/entities/role.entity';
 
 /**
  * Service responsible for platform authentication operations.
@@ -32,6 +34,8 @@ export class PlatformAuthService {
    * Creates an instance of PlatformAuthService.
    * @param userPlatformRepository - Repository for platform users.
    * @param {Repository<PlatformUser>} userRepository - Repository for platform users.
+   * @param {Repository<User>} userRepository - Repository for users.
+   * @param {Repository<Role>} roleRepository - Repository for roles.
    * @param {TokenService} tokenService - Service for generating and verifying tokens.
    * @param {MailService} mailService - Service for sending emails.
    */
@@ -40,6 +44,8 @@ export class PlatformAuthService {
     private readonly userPlatformRepository: Repository<PlatformUser>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
     private readonly tokenService: TokenService,
     private readonly mailService: MailService
   ) {}
@@ -47,10 +53,10 @@ export class PlatformAuthService {
   /**
    * Sends the email verification link to an existing user.
    * @param email User email.
-   * @returns {Promise<RegisterResponseDto>} Confirmation.
+   * @returns {Promise<void>} Confirmation.
    * @throws {UnauthorizedException} If user not found or already active.
    */
-  async resendVerificationEmail(email: string): Promise<RegisterResponseDto> {
+  async resendVerificationEmail(email: string): Promise<void> {
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
       throw new UnauthorizedException('User not found');
@@ -58,18 +64,20 @@ export class PlatformAuthService {
     if (user.status === Status.ACTIVE) {
       throw new UnauthorizedException('User already verified');
     }
-    const verificationToken = this.tokenService.generateEmailVerificationToken(user);
-    await this.mailService.sendVerificationEmail(
+    const verificationPin = this.generateVerificationPin();
+    Logger.debug(`Generated verification PIN for ${user.email}: ${verificationPin}`);
+    const hashedPin = await this.hashPin(verificationPin);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    user.verificationPin = hashedPin;
+    user.verificationPinExpiresAt = expiresAt;
+    await this.userRepository.save(user);
+
+    await this.mailService.sendVerificationPinEmail(
       user.email,
       user.firstName + ' ' + user.lastName,
-      verificationToken
+      verificationPin
     );
-    return {
-      id: user.id,
-      email: user.email,
-      status: user.status,
-      token: verificationToken,
-    };
   }
 
   /**
@@ -90,6 +98,10 @@ export class PlatformAuthService {
 
     try {
       const user = this.userPlatformRepository.create(registerDto);
+      const superAdminRole = await this.roleRepository.findOne({ where: { name: 'SUPER_ADMIN' } });
+      if (superAdminRole) {
+        user.roles = [superAdminRole];
+      }
       await this.userPlatformRepository.save(user);
 
       return this.tokenService.generateAccessToken(user);
@@ -104,11 +116,17 @@ export class PlatformAuthService {
   /**
    * Registers a new user.
    * @param {RegisterDto} registerDto - User registration data.
-   * @returns {Promise<RegisterResponseDto>} Registration result.
+   * @returns {Promise<{id: string, email: string, firstName: string, lastName: string, createdAt: string}>} The created user data.
    * @throws {ConflictException} If user with email already exists.
    * @description Publicly accessible endpoint.
    */
-  async registerUser(registerDto: RegisterDto): Promise<RegisterResponseDto> {
+  async registerUser(registerDto: RegisterDto): Promise<{
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    createdAt: string;
+  }> {
     const existingUser = await this.userRepository.findOne({
       where: { email: registerDto.email },
     });
@@ -124,22 +142,37 @@ export class PlatformAuthService {
 
     try {
       const savedUser = await this.userRepository.save(user);
-      const verificationToken = await this.generateEmailVerificationToken(savedUser);
-      await this.mailService.sendVerificationEmail(
+      const verificationPin = this.generateVerificationPin();
+      Logger.debug(`Generated verification PIN for ${savedUser.email}: ${verificationPin}`);
+      const hashedPin = await this.hashPin(verificationPin);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      savedUser.verificationPin = hashedPin;
+      savedUser.verificationPinExpiresAt = expiresAt;
+
+      const userRole = await this.roleRepository.findOne({ where: { name: 'USER' } });
+      if (userRole) {
+        savedUser.roles = [userRole];
+      }
+
+      await this.userRepository.save(savedUser);
+
+      await this.mailService.sendVerificationPinEmail(
         savedUser.email,
         savedUser.firstName + ' ' + savedUser.lastName,
-        verificationToken
+        verificationPin
       );
 
       return {
         id: savedUser.id,
         email: savedUser.email,
-        status: savedUser.status,
-        token: verificationToken,
+        firstName: savedUser.firstName,
+        lastName: savedUser.lastName,
+        createdAt: savedUser.createdAt.toISOString(),
       };
     } catch (error) {
       if (error instanceof QueryFailedError && (error as any).code === '23505') {
-        throw new ConflictException('Email already in use');
+        throw new ConflictException('Email already registered');
       }
       throw new InternalServerErrorException('Failed to register user');
     }
@@ -164,12 +197,16 @@ export class PlatformAuthService {
 
     user.lastLogin = new Date();
 
-    // Generate refresh token and hash it for storage
     const { refreshToken, refreshTokenHash } =
       await this.tokenService.generateAndHashRefreshToken(user);
 
     user.refreshTokenHash = refreshTokenHash;
-    await this.userPlatformRepository.save(user);
+
+    if ('active' in user) {
+      await this.userPlatformRepository.save(user);
+    } else {
+      await this.userRepository.save(user);
+    }
 
     const tokenResponse = this.tokenService.generateAccessToken(user);
 
@@ -198,90 +235,88 @@ export class PlatformAuthService {
    * Validates user credentials.
    * @param {string} email - User email.
    * @param {string} password - User password.
-   * @returns {Promise<PlatformUser | null>} User entity if valid, otherwise null.
+   * @returns {Promise<PlatformUser | User | null>} User entity if valid, otherwise null.
    * @private
    */
-  private async validateUser(email: string, password: string): Promise<PlatformUser | null> {
-    const user = await this.userPlatformRepository.findOne({
+  private async validateUser(email: string, password: string): Promise<PlatformUser | User | null> {
+    let user: PlatformUser | User | null = await this.userRepository.findOne({
+      where: { email, status: Status.ACTIVE },
+    });
+
+    if (user && (await user.comparePassword(password))) {
+      console.log('validateUser - found User:', { email, id: user.id, type: (user as any).type });
+      return user;
+    }
+
+    user = await this.userPlatformRepository.findOne({
       where: { email, active: true },
     });
 
     if (user && (await user.comparePassword(password))) {
+      console.log('validateUser - found PlatformUser:', { email, id: user.id, type: 'PLATFORM' });
       return user;
     }
 
+    console.log('validateUser - user not found or invalid password:', email);
     return null;
   }
 
   /**
-   * Generates JWT tokens for a user.
-   * @param {PlatformUser} user - User entity.
-   * @returns {Promise<TokenResponseDto>} Authentication tokens.
+   * Generates a 6-digit verification PIN.
+   * @returns {string} The generated PIN.
    * @private
    */
-  private async generateTokens(user: PlatformUser | User): Promise<TokenResponseDto> {
-    // Deprecated: use TokenService
-    return this.tokenService.generateAccessToken(user);
+  private generateVerificationPin(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   /**
-   * Generates JWT tokens for email verification.
-   * @param {User} user - User entity.
-   * @returns {Promise<string>} Verification token.
+   * Hashes a PIN for storage.
+   * @param pin - The PIN to hash.
+   * @returns {Promise<string>} The hashed PIN.
    * @private
    */
-  private async generateEmailVerificationToken(user: User): Promise<string> {
-    // Deprecated: use TokenService
-    return this.tokenService.generateEmailVerificationToken(user);
+  private async hashPin(pin: string): Promise<string> {
+    return this.tokenService.hashToken(pin);
   }
 
   /**
-   * Generates JWT tokens for password reset.
-   * @param {User} user - User entity.
-   * @returns {Promise<string>} Password reset token.
+   * Compares a provided PIN with a stored hash.
+   * @param pin - The plain PIN to compare.
+   * @param hash - The stored hash to compare against.
+   * @returns {Promise<boolean>} True if they match.
    * @private
    */
-  private async generatePasswordResetToken(user: User): Promise<string> {
-    // Deprecated: use TokenService
-    return this.tokenService.generatePasswordResetToken(user);
+  private async comparePinWithHash(pin: string, hash: string): Promise<boolean> {
+    return this.tokenService.compareRefreshTokenWithHash(pin, hash);
   }
 
   /**
-   * Validates JWT payload.
-   * @param {JwtPayload} payload - JWT payload.
-   * @returns {Promise<PlatformUser>} User entity.
+   * Verifies a user's email using a PIN.
+   * @param {string} email - User email.
+   * @param {string} verificationCode - Verification code.
+   * @returns {Promise<void>} Verification result.
+   * @throws {UnauthorizedException} If code is invalid, expired, or user not found.
    */
-  async validatePayload(payload: JwtPayload): Promise<PlatformUser> {
-    const user = await this.userPlatformRepository.findOne({
-      where: { id: payload.sub, active: true },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('User not found or inactive');
-    }
-
-    return user;
-  }
-
-  /**
-   * Verifies a user's email using a token.
-   * @param {string} token - Verification token.
-   * @returns {Promise<TokenResponseDto>} Verification result.
-   * @throws {UnauthorizedException} If token is invalid or user not found.
-   */
-  async verifyEmail(token: string): Promise<TokenResponseDto> {
-    const payload = this.tokenService.verifyToken<JwtPayload>(token);
-    if (payload.type !== JwtPayloadType.EMAIL_VERIFICATION) {
-      throw new UnauthorizedException('Invalid token type');
-    }
-    const user = await this.userRepository.findOne({ where: { id: payload.sub } });
+  async verifyEmail(email: string, verificationCode: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
+    if (!user.verificationPin || !user.verificationPinExpiresAt) {
+      throw new UnauthorizedException('No verification PIN found');
+    }
+    if (new Date() > user.verificationPinExpiresAt) {
+      throw new UnauthorizedException('Verification PIN expired');
+    }
+    const isValid = await this.comparePinWithHash(verificationCode, user.verificationPin);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid verification code');
+    }
     user.status = Status.ACTIVE;
+    user.verificationPin = undefined;
+    user.verificationPinExpiresAt = undefined;
     await this.userRepository.save(user);
-
-    return this.generateTokens(user);
   }
 
   /**
@@ -290,12 +325,12 @@ export class PlatformAuthService {
    * @returns Promise resolving when the email is sent.
    * @throws {UnauthorizedException} If user not found.
    */
-  async forgotPassword(email: string): Promise<RegisterResponseDto> {
+  async forgotPassword(email: string): Promise<Omit<RegisterResponseDto, 'token'>> {
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-    const resetToken = await this.generatePasswordResetToken(user);
+    const resetToken = this.tokenService.generatePasswordResetToken(user);
     await this.mailService.sendRecoveryPasswordEmail(
       user.email,
       user.firstName + ' ' + user.lastName,
@@ -305,7 +340,6 @@ export class PlatformAuthService {
       id: user.id,
       email: user.email,
       status: user.status,
-      token: resetToken,
     };
   }
 
@@ -341,20 +375,25 @@ export class PlatformAuthService {
     refreshToken?: string;
     refreshExpiresIn?: number;
   }> {
-    // Verify refresh token and payload
     const payload = this.tokenService.verifyRefreshToken<JwtRefreshPayload>(token);
     if (payload.type !== JwtPayloadType.REFRESH) {
       throw new UnauthorizedException('Invalid token type');
     }
 
-    const user = await this.userPlatformRepository.findOne({
-      where: { id: payload.sub, active: true },
+    let user: PlatformUser | User | null = await this.userRepository.findOne({
+      where: { id: payload.sub, status: Status.ACTIVE },
     });
+
+    if (!user) {
+      user = await this.userPlatformRepository.findOne({
+        where: { id: payload.sub, active: true },
+      });
+    }
+
     if (!user) {
       throw new UnauthorizedException('User not found or inactive');
     }
 
-    // Ensure stored hash exists and matches provided token
     if (!user.refreshTokenHash) {
       throw new UnauthorizedException('Refresh token revoked');
     }
@@ -363,18 +402,24 @@ export class PlatformAuthService {
       user.refreshTokenHash
     );
     if (!matches) {
-      // Possible token reuse / theft — revoke stored token and force logout
       user.refreshTokenHash = undefined;
-      await this.userPlatformRepository.save(user);
+      if ('active' in user) {
+        await this.userPlatformRepository.save(user);
+      } else {
+        await this.userRepository.save(user);
+      }
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // Generate new access token and rotate refresh token
     const tokenResponse = this.tokenService.generateAccessToken(user);
 
-    // Rotate refresh token (generate new and store hash)
     const { refreshToken } = await this.tokenService.generateAndHashRefreshToken(user);
-    await this.userPlatformRepository.save(user);
+
+    if ('active' in user) {
+      await this.userPlatformRepository.save(user);
+    } else {
+      await this.userRepository.save(user);
+    }
 
     return { tokenResponse, refreshToken };
   }
@@ -397,6 +442,62 @@ export class PlatformAuthService {
     }
 
     return tokenResponse;
+  }
+
+  /**
+   * Logout user by invalidating the refresh token.
+   * @param token Optional refresh token to revoke.
+   * @param userId Optional user id to force logout (admin action).
+   * @returns An object with a logout message.
+   */
+  async logout(token?: string, userId?: string): Promise<{ message: string }> {
+    if (token) {
+      try {
+        const payload = this.tokenService.verifyRefreshToken<JwtRefreshPayload>(token);
+
+        let user: PlatformUser | User | null = await this.userRepository.findOne({
+          where: { id: payload.sub },
+        });
+
+        if (!user) {
+          user = await this.userPlatformRepository.findOne({ where: { id: payload.sub } });
+        }
+
+        if (user) {
+          user.refreshTokenHash = undefined;
+          if ('active' in user) {
+            await this.userPlatformRepository.save(user);
+          } else {
+            await this.userRepository.save(user);
+          }
+        }
+        return { message: 'Logged out' };
+      } catch {
+        return { message: 'Logged out' };
+      }
+    }
+
+    if (userId) {
+      let user: PlatformUser | User | null = await this.userRepository.findOne({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        user = await this.userPlatformRepository.findOne({ where: { id: userId } });
+      }
+
+      if (user) {
+        user.refreshTokenHash = undefined;
+        if ('active' in user) {
+          await this.userPlatformRepository.save(user);
+        } else {
+          await this.userRepository.save(user);
+        }
+      }
+      return { message: 'Logged out' };
+    }
+
+    return { message: 'Logged out' };
   }
 
   /**
@@ -425,39 +526,45 @@ export class PlatformAuthService {
   }
 
   /**
-   * Logout user by invalidating the refresh token.
-   * @param token Optional refresh token to revoke.
-   * @param userId Optional user id to force logout (admin action).
-   * @returns An object with a logout message.
+   * Finds a platform user by ID.
+   * @param id - User ID.
+   * @returns PlatformUser entity.
    */
-  async logout(token?: string, userId?: string): Promise<{ message: string }> {
-    // If a refresh token is provided (from cookie), try to revoke it.
-    if (token) {
-      try {
-        const payload = this.tokenService.verifyRefreshToken<JwtRefreshPayload>(token);
-        const user = await this.userPlatformRepository.findOne({ where: { id: payload.sub } });
-        if (user) {
-          user.refreshTokenHash = undefined;
-          await this.userPlatformRepository.save(user);
-        }
-        return { message: 'Logged out' };
-      } catch {
-        // If token is invalid or expired, treat as already logged out for idempotency.
-        return { message: 'Logged out' };
-      }
+  async findPlatformUser(id: string): Promise<PlatformUser> {
+    const user = await this.userPlatformRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return user;
+  }
+
+  /**
+   * Finds a user by ID.
+   * @param id - User ID.
+   * @returns User entity.
+   */
+  async findUser(id: string): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return user;
+  }
+
+  /**
+   * Validates JWT payload.
+   * @param {JwtPayload} payload - JWT payload.
+   * @returns {Promise<PlatformUser>} User entity.
+   */
+  async validatePayload(payload: JwtPayload): Promise<PlatformUser> {
+    const user = await this.userPlatformRepository.findOne({
+      where: { id: payload.sub, active: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found or inactive');
     }
 
-    // Admin-forced logout by userId
-    if (userId) {
-      const user = await this.userPlatformRepository.findOne({ where: { id: userId } });
-      if (user) {
-        user.refreshTokenHash = undefined;
-        await this.userPlatformRepository.save(user);
-      }
-      return { message: 'Logged out' };
-    }
-
-    // No token or userId provided: still return success (cookie will be cleared by controller).
-    return { message: 'Logged out' };
+    return user;
   }
 }

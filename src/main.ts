@@ -83,6 +83,18 @@ async function bootstrap() {
     defaultVersion: '1',
   });
 
+  // Redirect root to Swagger docs in development
+  if (process.env.NODE_ENV !== 'production') {
+    const expressApp = app.getHttpAdapter().getInstance();
+    expressApp.use((req, res, next) => {
+      if (req.path === '/' && req.headers.accept?.includes('text/html')) {
+        res.redirect('/docs');
+      } else {
+        next();
+      }
+    });
+  }
+
   // Proxy trust
   if (process.env.TRUST_PROXY === 'true' || process.env.NODE_ENV === 'production') {
     const expressApp = app.getHttpAdapter().getInstance();

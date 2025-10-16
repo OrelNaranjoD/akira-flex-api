@@ -74,18 +74,17 @@ export class MailService {
   }
 
   /**
-   * Sends a verification email.
+   * Sends a verification email with PIN.
    * @param to Recipient email address.
    * @param name Recipient's name.
-   * @param token Verification token.
+   * @param pin Verification PIN.
    * @returns Promise resolving when the email is sent.
    */
-  async sendVerificationEmail(to: string, name: string, token: string) {
-    const verificationLink = process.env.FRONTEND_URL + `/verify-email?token=${token}`;
+  async sendVerificationPinEmail(to: string, name: string, pin: string) {
     const subject = 'Bienvenido a AkiraFlex - Verifica tu correo';
     const context = {
       name: name,
-      verificationUrl: verificationLink,
+      verificationPin: pin,
       year: new Date().getFullYear(),
     };
     await this.sendMail(to, subject, 'welcome', context);

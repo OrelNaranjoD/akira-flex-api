@@ -1,3 +1,27 @@
+# [0.3.0](https://github.com/OrelNaranjoD/akira-flex-api/compare/v0.2.0...v0.3.0) (2025-09-15)
+
+
+### Bug Fixes
+
+* add @Public decorator to platform guard ([d1b8664](https://github.com/OrelNaranjoD/akira-flex-api/commit/d1b8664e5c8ecc49fc5d88bbbc03c41f1f9c0817))
+* **AFA-006:** add CORS configuration for local development ([7dc8c51](https://github.com/OrelNaranjoD/akira-flex-api/commit/7dc8c513af06dc674f2c95dcced818c620e36741))
+* **ci:** install conventional commit parser ([4c942cb](https://github.com/OrelNaranjoD/akira-flex-api/commit/4c942cbdaf2b134928e9f6306f9360ea72286691))
+* **env:** update SMTP host to example.com for correct email configuration ([8d9d986](https://github.com/OrelNaranjoD/akira-flex-api/commit/8d9d986ed431dae5ca8181c11d8825eb7f7a1ad0))
+
+
+### Features
+
+* **AFA-006:** add Helmet middleware for enhanced security headers and CORS ([4513740](https://github.com/OrelNaranjoD/akira-flex-api/commit/4513740e75b04843cee973cd463451e0501f6020))
+* **AFA-008:** implement password reset and email verification features ([aab178f](https://github.com/OrelNaranjoD/akira-flex-api/commit/aab178f28bdb48f01462c30c52746dbb59fe6370))
+* **AFA-117:** add Swagger and ServeStatic modules for API documentation and static file serving ([5228293](https://github.com/OrelNaranjoD/akira-flex-api/commit/52282930255c1e8380a40d16ce9ce5926f88f019))
+* **AFA-237:** implement role management module with CRUD operations ([ecf826f](https://github.com/OrelNaranjoD/akira-flex-api/commit/ecf826f93a5af183d862bfbed3cf754dae6d9ced))
+* **AFA-242 AFA-234 AFA-233:** implement CRUD operations ([1f40377](https://github.com/OrelNaranjoD/akira-flex-api/commit/1f40377f98eca71c317da7516dfa8605900f1df9))
+* **AFA-252 AFA-009:** add mail module and service for sending verification emails ([66f6248](https://github.com/OrelNaranjoD/akira-flex-api/commit/66f62482f97be1fcfdf449bd227ae6e0408ef418))
+* **ci:** add GitHub Actions workflows for build and validation ([5d68263](https://github.com/OrelNaranjoD/akira-flex-api/commit/5d68263ccdc4bdb76ba793b2528b27fdba1d4167))
+* **tests:** refactor PlatformAuthService tests to use TokenService and MailService ([40f25a0](https://github.com/OrelNaranjoD/akira-flex-api/commit/40f25a05d77df791b0e337e1d92ff2f60f518d49))
+
+
+
 # [0.2.0](https://github.com/OrelNaranjoD/akira-flex-api/compare/v0.1.0...v0.2.0) (2025-08-30)
 
 

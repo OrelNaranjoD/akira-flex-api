@@ -59,7 +59,7 @@ jobs:
         run: npm run test
         env:
           NODE_ENV: test
-          DATABASE_TEST_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
           JWT_SECRET: test-jwt-secret-that-is-at-least-32-characters-long
           SUPER_ADMIN_PASSWORD: TestPassword123!
 

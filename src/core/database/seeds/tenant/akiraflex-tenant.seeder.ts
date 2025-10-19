@@ -4,6 +4,7 @@ import { TenantSeeder } from './tenant.seeder';
 import { Tenant } from '@platform/tenants/entities/tenant.entity';
 import { TenantConnectionService } from '@platform/tenants/services/tenant-connection.service';
 import { TenantUser } from '@tenant/auth/users/tenant-user.entity';
+import * as bcrypt from 'bcrypt';
 
 /**
  * Seeder for AkiraFlex tenant and its users.
@@ -208,18 +209,32 @@ export class AkiraFlexTenantSeeder {
       where: { email: userData.email },
     });
 
+    const hashedPassword = await this.hashPassword(userData.password);
+
     if (existingUser) {
       this.logger.log(`User ${userData.email} already exists, updating if necessary.`);
       Object.assign(existingUser, userData);
+      existingUser.password = hashedPassword;
       existingUser.active = true;
       await repository.save(existingUser);
     } else {
       const newUser = repository.create({
         ...userData,
+        password: hashedPassword,
         active: true,
       });
       await repository.save(newUser);
       this.logger.log(`Created user: ${userData.email} with role: ${userData.roles[0]}`);
     }
+  }
+
+  /**
+   * Hashes a password using bcrypt.
+   * @param password Plain text password.
+   * @returns Hashed password.
+   */
+  private async hashPassword(password: string): Promise<string> {
+    const saltRounds = 10;
+    return bcrypt.hash(password, saltRounds);
   }
 }

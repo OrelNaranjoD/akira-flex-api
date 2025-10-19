@@ -8,16 +8,14 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
-  UseGuards,
 } from '@nestjs/common';
 import { TenantService } from './services/tenant.service';
 import { CreateTenantDto } from './dtos/create-tenant.dto';
 import { UpdateTenantDto } from './dtos/update-tenant.dto';
 import { TenantResponseDto } from './dtos/tenant-response.dto';
-import { PlatformAuthGuard } from '../auth/guards/platform-auth.guard';
 import { RequirePlatformPermission } from '../auth/platform-permissions/decorators/platform-permissions.decorator';
-import { PlatformPermissionGuard } from '../auth/platform-permissions/guards/platform-permission.guard';
 import { PlatformPermission } from '../../../core/shared/definitions';
+import { Public } from '../../../core/decorators/public.decorator';
 
 /**
  * Controller for handling tenant management operations.
@@ -39,7 +37,6 @@ export class TenantManagementController {
    * @description POST /.
    * Roles: super_admin, admin.
    */
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.TENANT_CREATE)
   @Post()
   async create(@Body() createTenantDto: CreateTenantDto): Promise<TenantResponseDto> {
@@ -52,7 +49,6 @@ export class TenantManagementController {
    * @description GET /.
    * Roles: super_admin, admin.
    */
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.TENANT_VIEW_ALL)
   @Get()
   async findAll(): Promise<TenantResponseDto[]> {
@@ -63,6 +59,7 @@ export class TenantManagementController {
    * Debug endpoint to list all tenants (temporary for debugging).
    * @returns {Promise<any[]>} List of all tenants with details.
    */
+  @Public()
   @Get('debug')
   async debug(): Promise<any[]> {
     const tenants = await this.tenantService['tenantRepository'].find();
@@ -83,7 +80,6 @@ export class TenantManagementController {
    * @description PATCH /:tenantId.
    * Roles: super_admin, admin.
    */
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.TENANT_UPDATE)
   @Patch(':tenantId')
   async update(
@@ -100,7 +96,6 @@ export class TenantManagementController {
    * @description DELETE /:tenantId.
    * Roles: super_admin, admin.
    */
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.TENANT_DISABLE)
   @Delete(':tenantId')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -115,7 +110,6 @@ export class TenantManagementController {
    * @description PATCH /:tenantId/restore.
    * Roles: super_admin, admin.
    */
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.TENANT_RESTORE)
   @Patch(':tenantId/restore')
   async restore(@Param('tenantId') tenantId: string): Promise<void> {

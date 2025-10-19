@@ -1,5 +1,6 @@
 import { Injectable, ExecutionContext } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 
 /**
@@ -9,13 +10,23 @@ import { Observable } from 'rxjs';
  */
 @Injectable()
 export class TenantAuthGuard extends AuthGuard('tenant-jwt') {
+  constructor(private reflector: Reflector) {
+    super();
+  }
+
   /**
    * Overrides canActivate to handle public routes.
    * @param {ExecutionContext} context - Execution context.
    * @returns {boolean | Promise<boolean> | Observable<boolean>} Whether the route can be activated.
    */
   canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
-    // Add custom logic for public routes if needed
+    const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      return true;
+    }
     return super.canActivate(context);
   }
 }

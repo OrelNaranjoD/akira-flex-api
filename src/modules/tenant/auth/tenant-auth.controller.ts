@@ -3,7 +3,6 @@ import {
   Post,
   Body,
   Param,
-  UseGuards,
   Request,
   Get,
   ForbiddenException,
@@ -14,12 +13,11 @@ import { TenantAuthService } from './tenant-auth.service';
 import { LoginRequestDto } from './dtos/login-request.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { RegisterDto } from './dtos/register.dto';
-import { TenantAuthGuard } from './guards/tenant-auth.guard';
-import { TenantPermissionGuard } from './tenant-permissions/guards/tenant-permission.guard';
 import { RequireTenantPermission } from './tenant-permissions/decorators/tenant-permissions.decorator';
 import { PlatformRole, TenantPermission } from '../../../core/shared/definitions';
 import { TenantService } from '../../platform/tenants/services/tenant.service';
 import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
+import { Public } from '../../../core/decorators/public.decorator';
 
 /**
  * Controller for tenant authentication operations.
@@ -41,6 +39,7 @@ export class TenantAuthController {
    * @returns {Promise<TokenResponseDto>} Authentication tokens.
    * @description POST /login.
    */
+  @Public()
   @Post('login')
   async login(
     @Body() loginRequestDto: LoginRequestDto,
@@ -97,9 +96,8 @@ export class TenantAuthController {
    * @throws {ForbiddenException} If the authenticated user tries to create users in other tenants.
    * @description POST /register.
    */
-  @Post('register')
-  @UseGuards(TenantAuthGuard, TenantPermissionGuard)
   @RequireTenantPermission(TenantPermission.USER_CREATE)
+  @Post('register')
   async register(
     @Param('tenantId') tenantId: string,
     @Body() registerDto: RegisterDto,

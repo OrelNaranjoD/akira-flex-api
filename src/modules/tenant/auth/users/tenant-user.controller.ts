@@ -8,7 +8,6 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
-  UseGuards,
   Query,
 } from '@nestjs/common';
 import { CreateTenantUserDto } from './dtos/create-tenant-user.dto';
@@ -20,8 +19,6 @@ import {
   ToggleUserStatusDto,
   TransferOwnershipDto,
 } from './dtos/user-management.dto';
-import { TenantAuthGuard } from '../guards/tenant-auth.guard';
-import { TenantPermissionGuard } from '../tenant-permissions/guards/tenant-permission.guard';
 import { RequireTenantPermission } from '../tenant-permissions/decorators/tenant-permissions.decorator';
 import { TenantPermission } from '../../../../core/shared/definitions';
 import { ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
@@ -32,7 +29,6 @@ import { CreateTenantUserCommand } from './commands/create-tenant-user.command';
  * Controller for managing tenant users.
  * @class TenantUserController
  */
-@UseGuards(TenantAuthGuard, TenantPermissionGuard)
 @Controller('user-tenants')
 export class TenantUserController {
   constructor(

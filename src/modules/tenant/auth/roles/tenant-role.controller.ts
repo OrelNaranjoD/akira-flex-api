@@ -1,15 +1,13 @@
-import { Controller, Post, Body, Get, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Put, Delete } from '@nestjs/common';
 import { TenantRoleService } from './tenant-role.service';
 import { CreateTenantRoleDto } from './dtos/create-tenant-role.dto';
 import { UpdateTenantRoleDto } from './dtos/update-tenant-role.dto';
 import { TenantPermissions } from './decorators/tenant-permissions.decorator';
-import { TenantPermissionGuard } from '../tenant-permissions/guards/tenant-permission.guard';
 
 /**
  * Controller for managing tenant-level roles and permissions.
  */
 @Controller('tenant/roles')
-@UseGuards(TenantPermissionGuard)
 export class TenantRolesController {
   constructor(private readonly service: TenantRoleService) {}
 

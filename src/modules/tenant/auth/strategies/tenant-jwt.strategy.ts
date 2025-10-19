@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload, PlatformRole } from '../../../../core/shared/definitions';
 import { TenantAuthService } from '../tenant-auth.service';
+import { TenantService } from '../../../platform/tenants/services/tenant.service';
 
 /**
  * JWT strategy for tenant authentication.
@@ -19,11 +20,13 @@ export class TenantJwtStrategy extends PassportStrategy(Strategy, 'tenant-jwt') 
    * @param {ConfigService} configService - Configuration service.
    * @param {TenantAuthService} authService - Tenant authentication service.
    * @param {JwtService} jwtService - JWT service for manual token validation.
+   * @param {TenantService} tenantService - Tenant service.
    */
   constructor(
     private readonly configService: ConfigService,
     private readonly authService: TenantAuthService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly tenantService: TenantService
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -62,12 +65,16 @@ export class TenantJwtStrategy extends PassportStrategy(Strategy, 'tenant-jwt') 
     console.log('TenantJwtStrategy - validating regular tenant user');
     await this.authService.validatePayload(payload);
 
+    const tenant = await this.tenantService.findOneInternal(payload.tenantId!);
+    const schemaName = tenant.schemaName;
+
     return {
       sub: payload.sub,
       email: payload.email,
       roles: payload.roles,
       permissions: payload.permissions || [],
       tenantId: payload.tenantId,
+      schemaName,
       type: payload.type,
     };
   }

@@ -257,6 +257,7 @@ export interface JwtPayload {
   roles: string[];
   permissions: string[];
   tenantId?: string;
+  schemaName?: string;
   type: JwtPayloadType;
 }
 

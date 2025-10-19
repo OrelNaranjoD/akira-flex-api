@@ -8,34 +8,27 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
-  UseGuards,
 } from '@nestjs/common';
 import { TenantService } from './services/tenant.service';
 import { CreateTenantDto } from './dtos/create-tenant.dto';
 import { UpdateTenantDto } from './dtos/update-tenant.dto';
 import { TenantResponseDto } from './dtos/tenant-response.dto';
-import { TenantAuthService } from '../../tenant/auth/tenant-auth.service';
-import { PlatformAuthGuard } from '../auth/guards/platform-auth.guard';
 import { RequirePlatformPermission } from '../auth/platform-permissions/decorators/platform-permissions.decorator';
-import { PlatformPermissionGuard } from '../auth/platform-permissions/guards/platform-permission.guard';
 import { PlatformPermission } from '../../../core/shared/definitions';
+import { Public } from '../../../core/decorators/public.decorator';
 
 /**
  * Controller for handling tenant management operations.
- * @class TenantController
+ * @class TenantManagementController
  * @description /tenants.
  */
 @Controller('tenants')
-export class TenantController {
+export class TenantManagementController {
   /**
-   * Creates an instance of TenantController.
+   * Creates an instance of TenantManagementController.
    * @param {TenantService} tenantService - Service for tenant operations.
-   * @param {TenantAuthService} tenantAuthService - Tenant authentication service.
    */
-  constructor(
-    private readonly tenantService: TenantService,
-    private readonly tenantAuthService: TenantAuthService
-  ) {}
+  constructor(private readonly tenantService: TenantService) {}
 
   /**
    * Creates a new tenant (platform admin only).
@@ -44,7 +37,6 @@ export class TenantController {
    * @description POST /.
    * Roles: super_admin, admin.
    */
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.TENANT_CREATE)
   @Post()
   async create(@Body() createTenantDto: CreateTenantDto): Promise<TenantResponseDto> {
@@ -57,7 +49,6 @@ export class TenantController {
    * @description GET /.
    * Roles: super_admin, admin.
    */
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.TENANT_VIEW_ALL)
   @Get()
   async findAll(): Promise<TenantResponseDto[]> {
@@ -65,17 +56,20 @@ export class TenantController {
   }
 
   /**
-   * Retrieves a specific tenant by ID (platform admin only).
-   * @param {string}  tenantId - ID of the tenant to retrieve.
-   * @returns {Promise<TenantResponseDto>} The requested tenant.
-   * @description GET /:tenantId.
-   * Roles: super_admin, admin.
+   * Debug endpoint to list all tenants (temporary for debugging).
+   * @returns {Promise<any[]>} List of all tenants with details.
    */
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
-  @RequirePlatformPermission(PlatformPermission.TENANT_VIEW)
-  @Get(':tenantId')
-  async findOne(@Param('tenantId') tenantId: string): Promise<TenantResponseDto> {
-    return this.tenantService.findOne(tenantId);
+  @Public()
+  @Get('debug')
+  async debug(): Promise<any[]> {
+    const tenants = await this.tenantService['tenantRepository'].find();
+    return tenants.map((tenant) => ({
+      id: tenant.id,
+      name: tenant.name,
+      subdomain: tenant.subdomain,
+      schemaName: tenant.schemaName,
+      active: tenant.active,
+    }));
   }
 
   /**
@@ -86,7 +80,6 @@ export class TenantController {
    * @description PATCH /:tenantId.
    * Roles: super_admin, admin.
    */
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.TENANT_UPDATE)
   @Patch(':tenantId')
   async update(
@@ -103,7 +96,6 @@ export class TenantController {
    * @description DELETE /:tenantId.
    * Roles: super_admin, admin.
    */
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.TENANT_DISABLE)
   @Delete(':tenantId')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -118,7 +110,6 @@ export class TenantController {
    * @description PATCH /:tenantId/restore.
    * Roles: super_admin, admin.
    */
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.TENANT_RESTORE)
   @Patch(':tenantId/restore')
   async restore(@Param('tenantId') tenantId: string): Promise<void> {

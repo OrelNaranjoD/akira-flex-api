@@ -1,22 +1,9 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UseGuards,
-  Patch,
-  Query,
-  Req,
-  Res,
-  Get,
-  HttpCode,
-} from '@nestjs/common';
+import { Controller, Post, Body, Patch, Query, Req, Res, Get, HttpCode } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { PlatformAuthService } from './platform-auth.service';
 import { RegisterDto } from './dtos/register.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { LoginRequestDto } from './dtos/login-request.dto';
-import { PlatformAuthGuard } from './guards/platform-auth.guard';
-import { PlatformPermissionGuard } from './platform-permissions/guards/platform-permission.guard';
 import { RequirePlatformPermission } from './platform-permissions/decorators/platform-permissions.decorator';
 import {
   PlatformPermission,
@@ -72,7 +59,6 @@ export class PlatformAuthController {
    * Only accessible by super_admin role.
    */
   @Post('platform/register')
-  @UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
   @RequirePlatformPermission(PlatformPermission.AUTH_REGISTER)
   async registerPlatformUser(@Body() registerDto: RegisterDto): Promise<TokenResponseDto> {
     return this.authService.registerPlatformUser(registerDto);
@@ -106,6 +92,7 @@ export class PlatformAuthController {
    * @returns {Promise<TokenResponseDto>} Authentication tokens.
    * @description POST /login.
    */
+  @Public()
   @Post('login')
   async login(
     @Body() loginRequestDto: LoginRequestDto,
@@ -179,7 +166,6 @@ export class PlatformAuthController {
    * @description GET /profile.
    * Requires authentication.
    */
-  @UseGuards(PlatformAuthGuard)
   @Get('profile')
   async getProfile(@Req() req: Request): Promise<any> {
     const payload = req.user as JwtPayload;

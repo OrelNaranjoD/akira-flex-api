@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PlatformAuthModule } from './auth/platform-auth.module';
 import { PlatformUsersModule } from './auth/platform-users/platform-user.module';
@@ -13,6 +14,9 @@ import { Permission } from './auth/permissions/entities/permission.entity';
 import { UserModule } from './auth/users/user.module';
 import { RoleModule } from './auth/roles/role.module';
 import { PermissionModule } from './auth/permissions/permission.module';
+import { PlatformAuthGuard } from './auth/guards/platform-auth.guard';
+import { PlatformPermissionGuard } from './auth/platform-permissions/guards/platform-permission.guard';
+import { TenantManagementModule } from './tenants/tenant-management.module';
 
 /**
  * Module for platform management. Aggregates auth, users and roles modules.
@@ -35,6 +39,17 @@ import { PermissionModule } from './auth/permissions/permission.module';
     UserModule,
     RoleModule,
     PermissionModule,
+    TenantManagementModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: PlatformAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PlatformPermissionGuard,
+    },
   ],
 })
 export class PlatformModule {}

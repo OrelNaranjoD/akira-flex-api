@@ -1,0 +1,30 @@
+/**
+ * Platform permissions data for seeding.
+ */
+export const PLATFORM_PERMISSIONS_DATA = [
+  { code: 'PERMISSION_CREATE', description: 'Create permissions' },
+  { code: 'PERMISSION_VIEW_ALL', description: 'View all permissions' },
+  { code: 'PERMISSION_UPDATE', description: 'Update permissions' },
+  { code: 'PERMISSION_DELETE', description: 'Delete permissions' },
+  { code: 'USER_ROLE_VIEW_OWN', description: 'View own user role' },
+  { code: 'USER_VIEW', description: 'View user details' },
+  { code: 'USER_CREATE', description: 'Create new users' },
+  { code: 'USER_UPDATE', description: 'Update existing users' },
+  { code: 'USER_DELETE', description: 'Delete users' },
+  { code: 'AUDIT_VIEW_ALL', description: 'View all audit logs' },
+  { code: 'AUDIT_VIEW', description: 'View audit logs' },
+  { code: 'AUDIT_TENANT_VIEW', description: 'View tenant audit logs' },
+  { code: 'ROLE_VIEW_ALL', description: 'View all roles' },
+  { code: 'ROLE_VIEW_OWN', description: 'View own role' },
+  { code: 'ROLE_CREATE', description: 'Create new roles' },
+  { code: 'ROLE_UPDATE', description: 'Update existing roles' },
+  { code: 'ROLE_DELETE', description: 'Delete roles' },
+  { code: 'AUTH_REGISTER', description: 'Register platform admins' },
+  { code: 'TENANT_CREATE', description: 'Create tenants' },
+  { code: 'TENANT_UPDATE', description: 'Update tenants' },
+  { code: 'TENANT_DISABLE', description: 'Disable tenants' },
+  { code: 'TENANT_DELETE', description: 'Delete tenants' },
+  { code: 'TENANT_RESTORE', description: 'Restore tenants' },
+  { code: 'TENANT_VIEW', description: 'View tenant details' },
+  { code: 'TENANT_VIEW_ALL', description: 'View all tenants' },
+];

@@ -5,12 +5,7 @@ import { TenantAuthService } from '@tenant/auth/tenant-auth.service';
 import { TenantUser } from '@tenant/auth/users/tenant-user.entity';
 import { TenantService } from '@platform/tenants/services/tenant.service';
 import { TenantConnectionService } from '@platform/tenants/services/tenant-connection.service';
-import {
-  ForbiddenException,
-  ConflictException,
-  UnauthorizedException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, ConflictException, UnauthorizedException } from '@nestjs/common';
 
 describe('TenantAuthService', () => {
   let service: any;
@@ -154,84 +149,6 @@ describe('TenantAuthService', () => {
     await expect(service.validatePayload(payload)).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
-  it('findUsers should throw Forbidden when tenant inactive', async () => {
-    const tenant = { id: 't1', active: false } as any;
-    tenantService.findOneInternal.mockResolvedValue(tenant);
-
-    await expect(service.findUsers('t1')).rejects.toBeInstanceOf(ForbiddenException);
-  });
-
-  it('findUsers should return users when tenant active', async () => {
-    const tenant = { id: 't1', active: true, schemaName: 'tenant_t1' } as any;
-    const users = [{ id: 'u1', email: 'a@b.com' }];
-    const repo: any = {
-      find: jest.fn().mockResolvedValue(users),
-    };
-
-    tenantService.findOneInternal.mockResolvedValue(tenant);
-    tenantConnectionService.getRepository.mockResolvedValue(repo);
-
-    await expect(service.findUsers('t1')).resolves.toEqual(users);
-  });
-
-  it('updateUser should throw NotFound when user missing', async () => {
-    const tenant = { id: 't1', active: true, schemaName: 'tenant_t1' } as any;
-    const repo: any = {
-      findOne: jest.fn().mockResolvedValue(null),
-    };
-
-    tenantService.findOneInternal.mockResolvedValue(tenant);
-    tenantConnectionService.getRepository.mockResolvedValue(repo);
-
-    await expect(service.updateUser('t1', 'u1', { firstName: 'x' } as any)).rejects.toBeInstanceOf(
-      NotFoundException
-    );
-  });
-
-  it('updateUser should save and return updated user', async () => {
-    const tenant = { id: 't1', active: true, schemaName: 'tenant_t1' } as any;
-    const user = { id: 'u1', tenantId: 't1', email: 'a@b.com', active: true } as any;
-    const repo: any = {
-      findOne: jest.fn().mockResolvedValue(user),
-      save: jest.fn().mockResolvedValue({ ...user, firstName: 'X' }),
-    };
-
-    tenantService.findOneInternal.mockResolvedValue(tenant);
-    tenantConnectionService.getRepository.mockResolvedValue(repo);
-
-    await expect(service.updateUser('t1', 'u1', { firstName: 'X' } as any)).resolves.toEqual({
-      ...user,
-      firstName: 'X',
-    });
-  });
-
-  it('deactivateUser should throw NotFound when user missing', async () => {
-    const tenant = { id: 't1', active: true, schemaName: 'tenant_t1' } as any;
-    const repo: any = {
-      findOne: jest.fn().mockResolvedValue(null),
-    };
-
-    tenantService.findOneInternal.mockResolvedValue(tenant);
-    tenantConnectionService.getRepository.mockResolvedValue(repo);
-
-    await expect(service.deactivateUser('t1', 'u1')).rejects.toBeInstanceOf(NotFoundException);
-  });
-
-  it('deactivateUser should set active false and save', async () => {
-    const tenant = { id: 't1', active: true, schemaName: 'tenant_t1' } as any;
-    const user = { id: 'u1', tenantId: 't1', active: true } as any;
-    const repo: any = {
-      findOne: jest.fn().mockResolvedValue(user),
-      save: jest.fn().mockResolvedValue({ ...user, active: false }),
-    };
-
-    tenantService.findOneInternal.mockResolvedValue(tenant);
-    tenantConnectionService.getRepository.mockResolvedValue(repo);
-
-    await expect(service.deactivateUser('t1', 'u1')).resolves.toBeUndefined();
-    expect(user.active).toBe(false);
-  });
-
   describe('createTenantAdmin', () => {
     it('should create first admin user successfully', async () => {
       const dto = {
@@ -245,6 +162,11 @@ describe('TenantAuthService', () => {
         findOne: jest.fn().mockResolvedValue(null), // No existing admin
         create: jest.fn().mockReturnValue(dto),
         save: jest.fn().mockResolvedValue({ id: 'admin1', ...dto, roles: ['ADMIN'] }),
+        createQueryBuilder: jest.fn(() => ({
+          where: jest.fn().mockReturnThis(),
+          getOne: jest.fn().mockResolvedValue(null),
+        })),
+        find: jest.fn().mockResolvedValue([{ name: 'ADMIN', permissions: [] }]),
       };
 
       tenantService.findOneInternal.mockResolvedValue(tenant);
@@ -284,6 +206,10 @@ describe('TenantAuthService', () => {
       const tenant = { id: 't1', active: true, schemaName: 'tenant_t1' } as any;
       const repo: any = {
         findOne: jest.fn().mockResolvedValue({ id: 'existing-admin', roles: ['ADMIN'] }),
+        createQueryBuilder: jest.fn(() => ({
+          where: jest.fn().mockReturnThis(),
+          getOne: jest.fn().mockResolvedValue({ id: 'existing-admin', roles: ['ADMIN'] }),
+        })),
       };
 
       tenantService.findOneInternal.mockResolvedValue(tenant);

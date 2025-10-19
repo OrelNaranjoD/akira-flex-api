@@ -1,0 +1,31 @@
+.topbar {
+  display: none !important;
+}
+
+.title::before {
+  content: '';
+  background-image: url('/logotype.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+.title {
+  display: inline-flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+}
+
+.info {
+  margin: 20px 0 0 0 !important;
+}
+
+.scheme-container {
+  background-color: #fafafa !important;
+  padding: 0 0 10px 0 !important;
+}

@@ -14,6 +14,16 @@ import { PlatformUserEntity } from '@shared';
 import { PlatformPermission } from '../../platform-permissions/entities/platform-permission.entity';
 
 /**
+ * Enum for tenant request status.
+ */
+export enum TenantRequestStatus {
+  NONE = 'none',
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+
+/**
  * Represents a platform user.
  * @class PlatformUser
  */
@@ -82,7 +92,6 @@ export class PlatformUser implements PlatformUserEntity {
     const perms: PlatformPermission[] = (this.roles as any[]).flatMap(
       (role: any) => (role.permissions || []) as PlatformPermission[]
     );
-    // Remove duplicates by id
     const unique = new Map<string, PlatformPermission>(
       perms.map((p: PlatformPermission) => [p.id, p] as [string, PlatformPermission])
     );
@@ -123,6 +132,32 @@ export class PlatformUser implements PlatformUserEntity {
    */
   @Column({ type: 'varchar', name: 'refresh_token_hash', nullable: true })
   refreshTokenHash?: string;
+
+  /**
+   * Status of tenant creation request.
+   * @type {TenantRequestStatus}
+   */
+  @Column({
+    type: 'enum',
+    enum: TenantRequestStatus,
+    default: TenantRequestStatus.NONE,
+    name: 'tenant_request_status',
+  })
+  tenantRequestStatus: TenantRequestStatus;
+
+  /**
+   * Requested company name for tenant creation.
+   * @type {string}
+   */
+  @Column({ type: 'varchar', name: 'requested_company_name', nullable: true })
+  requestedCompanyName?: string;
+
+  /**
+   * Requested subdomain for tenant creation.
+   * @type {string}
+   */
+  @Column({ type: 'varchar', name: 'requested_subdomain', nullable: true })
+  requestedSubdomain?: string;
 
   /**
    * Hashes password before inserting into database.

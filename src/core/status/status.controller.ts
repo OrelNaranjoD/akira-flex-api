@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheckService, HealthCheck } from '@nestjs/terminus';
+import { Public } from '../decorators/public.decorator';
 
 /**
  * Simple status controller used by e2e tests.
@@ -12,6 +13,7 @@ export class StatusController {
    * @returns {{status: string}} Status object.
    */
   @Get()
+  @Public()
   status(): { status: string } {
     return { status: 'OK' };
   }
@@ -22,6 +24,7 @@ export class StatusController {
    */
   @Get('health')
   @HealthCheck()
+  @Public()
   check() {
     return this.health.check([]);
   }

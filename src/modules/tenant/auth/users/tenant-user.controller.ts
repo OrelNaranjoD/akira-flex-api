@@ -14,6 +14,8 @@ import { CreateTenantUserDto } from './dtos/create-tenant-user.dto';
 import { TenantUserService } from './tenant-user.service';
 import { UpdateTenantUserDto } from './dtos/update-tenant-user.dto';
 import { TenantUserListResponseDto } from './dtos/tenant-user-list-response.dto';
+import { TenantOwnerFiltersDto } from './dtos/tenant-owner-filters.dto';
+import { TenantOwnerListResponseDto } from './dtos/tenant-owner-list-response.dto';
 import {
   UpdateUserRolesDto,
   ToggleUserStatusDto,
@@ -61,6 +63,23 @@ export class TenantUserController {
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number
   ): Promise<TenantUserListResponseDto> {
     return this.tenantUserService.findAll(page, limit);
+  }
+
+  /**
+   * Retrieves tenant owners with optional filters and pagination.
+   * @param filters - Optional filters for searching owners.
+   * @param page - Page number.
+   * @param limit - Items per page.
+   * @returns Paginated and filtered list of tenant owners.
+   */
+  @RequireTenantPermission(TenantPermission.USER_VIEW_ALL)
+  @Get('owners')
+  async findOwners(
+    @Query() filters?: TenantOwnerFiltersDto,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number = 10
+  ): Promise<TenantOwnerListResponseDto> {
+    return this.tenantUserService.findOwners(filters, page, limit);
   }
 
   /**

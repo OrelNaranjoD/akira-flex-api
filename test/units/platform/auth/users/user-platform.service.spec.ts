@@ -3,6 +3,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { RegisterDto, UserRoles } from '@orelnaranjod/flex-shared-lib';
 import { PlatformUserService } from '@platform/auth/platform-users/platform-user.service';
+import { TenantService } from '../../../../../src/modules/platform/tenants/services/tenant.service';
 import { PlatformUser } from '@platform/auth/platform-users/entities/platform-user.entity';
 import { PlatformRole } from '@platform/auth/platform-roles/entities/platform-role.entity';
 import { CreatePlatformUserDto } from '@platform/auth/platform-users/dtos/create-platform-user.dto';
@@ -22,12 +23,17 @@ describe('PlatformUserService', () => {
       findOne: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
-      find: jest.fn(),
+      findAndCount: jest.fn(),
     };
     roleRepo = { findOne: jest.fn() };
+    const tenantServiceMock = { findBySubdomain: jest.fn().mockResolvedValue(null) };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PlatformUserService,
+        {
+          provide: TenantService,
+          useValue: tenantServiceMock,
+        },
         {
           provide: getRepositoryToken(PlatformUser),
           useValue: repo,
@@ -41,9 +47,6 @@ describe('PlatformUserService', () => {
     service = module.get<PlatformUserService>(PlatformUserService);
   });
 
-  /**
-   * Tests for createUser().
-   */
   describe('createUser', () => {
     it('should create a user if email does not exist', async () => {
       repo.findOne.mockResolvedValue(null);
@@ -106,27 +109,41 @@ describe('PlatformUserService', () => {
     });
   });
 
-  /**
-   * Tests for findAll().
-   */
   describe('findAll', () => {
     it('should return all users', async () => {
-      const users = [{ id: '1' }, { id: '2' }];
-      repo.find.mockResolvedValue(users);
-      await expect(service.findAll()).resolves.toEqual(users);
-      expect(repo.find).toHaveBeenCalled();
+      const users = [
+        { id: '1', email: 'test@test.com' },
+        { id: '2', email: 'test2@test.com' },
+      ];
+      repo.findAndCount.mockResolvedValue([users, 2]);
+      const result = await service.findAll();
+      expect(result.users).toEqual(users.map((u) => ({ ...u, tenant: undefined })));
+      expect(result.total).toBe(2);
+      expect(repo.findAndCount).toHaveBeenCalled();
     });
   });
 
-  /**
-   * Tests for findOne().
-   */
   describe('findOne', () => {
     it('should return the user if exists', async () => {
       const user = { id: '1' };
       repo.findOne.mockResolvedValue(user);
       await expect(service.findOne('1')).resolves.toEqual(user);
-      expect(repo.findOne).toHaveBeenCalledWith({ where: { id: '1' } });
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { id: '1' },
+        select: [
+          'id',
+          'email',
+          'firstName',
+          'lastName',
+          'phone',
+          'roles',
+          'active',
+          'createdAt',
+          'updatedAt',
+          'lastLogin',
+        ],
+        relations: ['roles', 'roles.permissions'],
+      });
     });
     it('should throw NotFoundException if user does not exist', async () => {
       repo.findOne.mockResolvedValue(null);
@@ -134,27 +151,21 @@ describe('PlatformUserService', () => {
     });
   });
 
-  /**
-   * Tests for update().
-   */
   describe('update', () => {
     it('should update the user', async () => {
       const user = { id: '1', firstName: 'Old' };
       const dto: UpdatePlatformUserDto = { firstName: 'New' };
-      jest.spyOn(service, 'findOne').mockResolvedValue(user as PlatformUser);
+      repo.findOne.mockResolvedValue(user);
       repo.save.mockResolvedValue({ ...user, ...dto });
       await expect(service.update('1', dto)).resolves.toEqual({ ...user, ...dto });
       expect(repo.save).toHaveBeenCalledWith({ ...user, ...dto });
     });
   });
 
-  /**
-   * Tests for remove().
-   */
   describe('remove', () => {
     it('should deactivate the user (soft delete)', async () => {
       const user = { id: '1', active: true };
-      jest.spyOn(service, 'findOne').mockResolvedValue(user as PlatformUser);
+      repo.findOne.mockResolvedValue(user);
       repo.save.mockResolvedValue({ ...user, active: false });
       await service.remove('1');
       expect(user.active).toBe(false);

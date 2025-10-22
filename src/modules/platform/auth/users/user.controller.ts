@@ -21,6 +21,8 @@ import { Permission } from '../../../../core/shared/definitions';
 import { User } from './decorators/user.decorator';
 import type { JwtPayload } from '@orelnaranjod/flex-shared-lib';
 import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
+import { UserListResponseDto } from './dtos/user-list-response.dto';
+import { UserFiltersDto } from './dtos/user-filters.dto';
 
 /**
  * Controller for managing  users.
@@ -44,17 +46,22 @@ export class UserController {
   }
 
   /**
-   * Retrieves all  users.
+   * Retrieves all  users with optional filters and pagination.
+   * @param filters - Optional filters for searching users.
    * @param page - Page number (default: 1).
    * @param limit - Number of items per page (default: 10).
-   * @returns Paginated list of users.
+   * @returns Paginated and filtered list of users.
    */
   @RequirePermission(Permission.USER_VIEW_ALL)
   @Get()
-  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+  async findAll(
+    @Query() filters?: UserFiltersDto,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ): Promise<UserListResponseDto> {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.UserService.findAll(pageNum, limitNum);
+    return this.UserService.findAll(filters, pageNum, limitNum);
   }
 
   /**

@@ -13,6 +13,8 @@ import { TenantRole } from '../roles/entities/tenant-role.entity';
 import { CreateTenantUserDto } from './dtos/create-tenant-user.dto';
 import { UpdateTenantUserDto } from './dtos/update-tenant-user.dto';
 import { TenantUserListResponseDto } from './dtos/tenant-user-list-response.dto';
+import { TenantOwnerFiltersDto } from './dtos/tenant-owner-filters.dto';
+import { TenantOwnerListResponseDto } from './dtos/tenant-owner-list-response.dto';
 import {
   UpdateUserRolesDto,
   ToggleUserStatusDto,
@@ -143,6 +145,75 @@ export class TenantUserService {
     const totalPages = Math.ceil(total / limit);
     return {
       users: users,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
+  /**
+   * Finds tenant owners with optional filters and pagination.
+   * @param filters - Optional filters to apply.
+   * @param page - Page number (1-based, default: 1).
+   * @param limit - Number of items per page (default: 10, max: 100).
+   * @returns {Promise<TenantOwnerListResponseDto>} Paginated and filtered list of owners.
+   */
+  async findOwners(
+    filters?: TenantOwnerFiltersDto,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<TenantOwnerListResponseDto> {
+    const userRepository = await this.getRepository(TenantUser);
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = userRepository
+      .createQueryBuilder('user')
+      .where(":role = ANY(string_to_array(user.roles, ','))", { role: 'OWNER' });
+
+    if (filters) {
+      if (filters.email) {
+        queryBuilder.andWhere('LOWER(user.email) LIKE LOWER(:email)', {
+          email: `%${filters.email}%`,
+        });
+      }
+
+      if (filters.firstName) {
+        queryBuilder.andWhere('LOWER(user.firstName) LIKE LOWER(:firstName)', {
+          firstName: `%${filters.firstName}%`,
+        });
+      }
+
+      if (filters.lastName) {
+        queryBuilder.andWhere('LOWER(user.lastName) LIKE LOWER(:lastName)', {
+          lastName: `%${filters.lastName}%`,
+        });
+      }
+
+      if (filters.active !== undefined) {
+        queryBuilder.andWhere('user.active = :active', { active: filters.active });
+      }
+
+      if (filters.createdFrom) {
+        queryBuilder.andWhere('user.createdAt >= :createdFrom', {
+          createdFrom: filters.createdFrom,
+        });
+      }
+
+      if (filters.createdTo) {
+        queryBuilder.andWhere('user.createdAt <= :createdTo', {
+          createdTo: filters.createdTo,
+        });
+      }
+    }
+
+    queryBuilder.orderBy('user.createdAt', 'DESC').skip(skip).take(limit);
+
+    const [owners, total] = await queryBuilder.getManyAndCount();
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      owners,
       total,
       page,
       limit,

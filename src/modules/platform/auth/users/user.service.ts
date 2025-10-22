@@ -10,6 +10,7 @@ import { Status } from '../../../../core/shared/definitions';
 import { mapUserToResponse } from './mappers/user-response.mapper';
 import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
 import { UserListResponseDto } from './dtos/user-list-response.dto';
+import { UserFiltersDto } from './dtos/user-filters.dto';
 
 /**
  * Service for managing  users.
@@ -53,35 +54,80 @@ export class UserService {
   }
 
   /**
-   * Retrieves all users with pagination.
+   * Retrieves all users with optional filters and pagination.
+   * @param filters - Optional filters to apply.
    * @param page - Page number (1-based, default: 1).
    * @param limit - Number of items per page (default: 10, max: 100).
-   * @returns {Promise<UserListResponseDto>} Paginated list of users.
+   * @returns {Promise<UserListResponseDto>} Paginated and filtered list of users.
    */
-  async findAll(page: number = 1, limit: number = 10): Promise<UserListResponseDto> {
+  async findAll(
+    filters?: UserFiltersDto,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<UserListResponseDto> {
     const validPage = Math.max(1, page);
     const validLimit = Math.min(Math.max(1, limit), 100);
     const skip = (validPage - 1) * validLimit;
 
-    const [users, total] = await this.userRepository.findAndCount({
-      select: [
-        'id',
-        'email',
-        'firstName',
-        'lastName',
-        'phone',
-        'roles',
-        'status',
-        'createdAt',
-        'updatedAt',
-        'lastLogin',
-      ],
-      relations: ['roles'],
-      skip,
-      take: validLimit,
-      order: { createdAt: 'DESC' },
-    });
+    const queryBuilder = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'role');
 
+    if (filters) {
+      if (filters.email) {
+        queryBuilder.andWhere('LOWER(user.email) LIKE LOWER(:email)', {
+          email: `%${filters.email}%`,
+        });
+      }
+
+      if (filters.firstName) {
+        queryBuilder.andWhere('LOWER(user.firstName) LIKE LOWER(:firstName)', {
+          firstName: `%${filters.firstName}%`,
+        });
+      }
+
+      if (filters.lastName) {
+        queryBuilder.andWhere('LOWER(user.lastName) LIKE LOWER(:lastName)', {
+          lastName: `%${filters.lastName}%`,
+        });
+      }
+
+      if (filters.status) {
+        queryBuilder.andWhere('user.status = :status', { status: filters.status });
+      }
+
+      if (filters.roles && filters.roles.length > 0) {
+        queryBuilder.andWhere('role.name IN (:...roles)', { roles: filters.roles });
+      }
+
+      if (filters.createdFrom) {
+        queryBuilder.andWhere('user.createdAt >= :createdFrom', {
+          createdFrom: filters.createdFrom,
+        });
+      }
+
+      if (filters.createdTo) {
+        queryBuilder.andWhere('user.createdAt <= :createdTo', {
+          createdTo: filters.createdTo,
+        });
+      }
+
+      if (filters.lastLoginFrom) {
+        queryBuilder.andWhere('user.lastLogin >= :lastLoginFrom', {
+          lastLoginFrom: filters.lastLoginFrom,
+        });
+      }
+
+      if (filters.lastLoginTo) {
+        queryBuilder.andWhere('user.lastLogin <= :lastLoginTo', {
+          lastLoginTo: filters.lastLoginTo,
+        });
+      }
+    }
+
+    queryBuilder.orderBy('user.createdAt', 'DESC').skip(skip).take(validLimit);
+
+    const [users, total] = await queryBuilder.getManyAndCount();
     const totalPages = Math.ceil(total / validLimit);
 
     return {

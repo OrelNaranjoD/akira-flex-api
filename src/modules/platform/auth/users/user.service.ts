@@ -9,6 +9,7 @@ import { UserResponseDto } from './dtos/user-response.dto';
 import { Status } from '../../../../core/shared/definitions';
 import { mapUserToResponse } from './mappers/user-response.mapper';
 import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
+import { UserListResponseDto } from './dtos/user-list-response.dto';
 
 /**
  * Service for managing  users.
@@ -52,11 +53,44 @@ export class UserService {
   }
 
   /**
-   * Retrieves all  users.
-   * @returns {Promise<User[]>} List of users.
+   * Retrieves all users with pagination.
+   * @param page - Page number (1-based, default: 1).
+   * @param limit - Number of items per page (default: 10, max: 100).
+   * @returns {Promise<UserListResponseDto>} Paginated list of users.
    */
-  async findAll(): Promise<User[]> {
-    return this.userRepository.find();
+  async findAll(page: number = 1, limit: number = 10): Promise<UserListResponseDto> {
+    const validPage = Math.max(1, page);
+    const validLimit = Math.min(Math.max(1, limit), 100);
+    const skip = (validPage - 1) * validLimit;
+
+    const [users, total] = await this.userRepository.findAndCount({
+      select: [
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+        'phone',
+        'roles',
+        'status',
+        'createdAt',
+        'updatedAt',
+        'lastLogin',
+      ],
+      relations: ['roles'],
+      skip,
+      take: validLimit,
+      order: { createdAt: 'DESC' },
+    });
+
+    const totalPages = Math.ceil(total / validLimit);
+
+    return {
+      users: users.map(mapUserToResponse),
+      total,
+      page: validPage,
+      limit: validLimit,
+      totalPages,
+    };
   }
 
   /**

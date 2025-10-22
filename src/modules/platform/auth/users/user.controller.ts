@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dtos/create-user.dto';
@@ -44,12 +45,16 @@ export class UserController {
 
   /**
    * Retrieves all  users.
-   * @returns {Promise<User[]>} List of users.
+   * @param page - Page number (default: 1).
+   * @param limit - Number of items per page (default: 10).
+   * @returns Paginated list of users.
    */
   @RequirePermission(Permission.USER_VIEW_ALL)
   @Get()
-  async findAll() {
-    return this.UserService.findAll();
+  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.UserService.findAll(pageNum, limitNum);
   }
 
   /**

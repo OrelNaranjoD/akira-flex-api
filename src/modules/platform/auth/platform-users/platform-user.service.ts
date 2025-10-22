@@ -5,7 +5,10 @@ import { PlatformUser } from './entities/platform-user.entity';
 import { PlatformRole } from '../platform-roles/entities/platform-role.entity';
 import { CreatePlatformUserDto } from './dtos/create-platform-user.dto';
 import { UpdatePlatformUserDto } from './dtos/update-platform-user.dto';
+import { PlatformUserListResponseDto } from './dtos/platform-user-list-response.dto';
+import { TenantService } from '../../tenants/services/tenant.service';
 import { RegisterDto, UserRoles } from '@orelnaranjod/flex-shared-lib';
+import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
 
 /**
  * Service for managing platform users.
@@ -17,7 +20,8 @@ export class PlatformUserService {
     @InjectRepository(PlatformUser)
     private readonly userRepository: Repository<PlatformUser>,
     @InjectRepository(PlatformRole)
-    private readonly roleRepository: Repository<PlatformRole>
+    private readonly roleRepository: Repository<PlatformRole>,
+    private readonly tenantService: TenantService
   ) {}
 
   /**
@@ -52,11 +56,54 @@ export class PlatformUserService {
   }
 
   /**
-   * Retrieves all platform users.
-   * @returns {Promise<PlatformUser[]>} List of users.
+   * Retrieves all platform users with pagination.
+   * @param page - Page number (1-based, default: 1).
+   * @param limit - Number of items per page (default: 10, max: 100).
+   * @returns {Promise<PlatformUserListResponseDto>} Paginated list of users.
    */
-  async findAll(): Promise<PlatformUser[]> {
-    return this.userRepository.find();
+  async findAll(page: number = 1, limit: number = 10): Promise<PlatformUserListResponseDto> {
+    const validPage = Math.max(1, page);
+    const validLimit = Math.min(Math.max(1, limit), 100);
+    const skip = (validPage - 1) * validLimit;
+
+    const [users, total] = await this.userRepository.findAndCount({
+      select: [
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+        'phone',
+        'roles',
+        'active',
+        'createdAt',
+        'updatedAt',
+        'lastLogin',
+      ],
+      relations: ['roles', 'roles.permissions'],
+      skip,
+      take: validLimit,
+      order: { createdAt: 'DESC' },
+    });
+
+    const totalPages = Math.ceil(total / validLimit);
+
+    const usersWithTenant = await Promise.all(
+      users.map(async (user) => {
+        const tenant = await this.getUserTenant(user.email);
+        return {
+          ...user,
+          tenant: tenant || undefined,
+        };
+      })
+    );
+
+    return {
+      users: usersWithTenant,
+      total,
+      page: validPage,
+      limit: validLimit,
+      totalPages,
+    };
   }
 
   /**
@@ -65,7 +112,22 @@ export class PlatformUserService {
    * @returns {Promise<PlatformUser>} Found user.
    */
   async findOne(id: string): Promise<PlatformUser> {
-    const user = await this.userRepository.findOne({ where: { id } });
+    const user = await this.userRepository.findOne({
+      where: { id },
+      select: [
+        'id',
+        'email',
+        'firstName',
+        'lastName',
+        'phone',
+        'roles',
+        'active',
+        'createdAt',
+        'updatedAt',
+        'lastLogin',
+      ],
+      relations: ['roles', 'roles.permissions'],
+    });
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
@@ -105,6 +167,18 @@ export class PlatformUserService {
   }
 
   /**
+   * Toggles user active status.
+   * @param id - User ID.
+   * @param dto - New status.
+   * @returns Updated user.
+   */
+  async toggleUserStatus(id: string, dto: ToggleUserStatusDto): Promise<PlatformUser> {
+    const user = await this.findOne(id);
+    user.active = dto.active;
+    return this.userRepository.save(user);
+  }
+
+  /**
    * Hard deletes a platform user.
    * @param {string} id - User ID.
    * @returns {Promise<void>}
@@ -125,10 +199,8 @@ export class PlatformUserService {
     const role = await this.roleRepository.findOne({ where: { id: roleId } });
     if (!role) throw new NotFoundException('Role not found');
 
-    // initialize roles array if missing
     if (!user.roles) user.roles = [] as any;
 
-    // avoid duplicates
     const already = (user.roles as any[]).some((r) => r.id === role.id || r === role.id);
     if (!already) {
       (user.roles as any[]).push(role);
@@ -158,5 +230,43 @@ export class PlatformUserService {
       roles,
       permissions,
     };
+  }
+
+  /**
+   * Determines the tenant associated with a user based on their email domain.
+   * @param {string} email - User email.
+   * @returns {Promise<any>} Tenant information or null if no tenant is associated.
+   */
+  private async getUserTenant(email: string): Promise<any> {
+    try {
+      if (email === 'landing@akiraflex.com') {
+        return null;
+      }
+
+      const emailDomain = email.split('@')[1]?.toLowerCase();
+      if (!emailDomain) return null;
+
+      const domainToTenantMap: { [key: string]: string } = {
+        'repusa.com': 'repusa',
+        'maestranzasunidos.cl': 'maestranzas-unidos',
+        'akiraflex.com': 'akiraflex',
+      };
+
+      const tenantSubdomain = domainToTenantMap[emailDomain];
+      if (!tenantSubdomain) return null;
+
+      const tenant = await this.tenantService.findBySubdomain(tenantSubdomain);
+      if (!tenant) return null;
+
+      return {
+        id: tenant.id,
+        name: tenant.name,
+        subdomain: tenant.subdomain,
+        email: tenant.email,
+        active: tenant.active,
+      };
+    } catch {
+      return null;
+    }
   }
 }

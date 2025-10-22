@@ -19,6 +19,7 @@ import { RequirePermission } from '../permissions/decorators/permissions.decorat
 import { Permission } from '../../../../core/shared/definitions';
 import { User } from './decorators/user.decorator';
 import type { JwtPayload } from '@orelnaranjod/flex-shared-lib';
+import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
 
 /**
  * Controller for managing  users.
@@ -60,7 +61,6 @@ export class UserController {
   @RequirePermission(Permission.USER_ROLE_VIEW_OWN)
   @Get('owner')
   async getOwnerInfo(@User() user: JwtPayload) {
-    // JwtPayload.sub contains the user id (UUID) per token generation.
     return this.UserService.getOwnerInfo(user.sub);
   }
 
@@ -108,6 +108,18 @@ export class UserController {
   @Patch(':id/restore')
   async restore(@Param('id') id: string): Promise<void> {
     return this.UserService.restore(id);
+  }
+
+  /**
+   * Toggles user active status.
+   * @param id - User ID.
+   * @param dto - New status.
+   * @returns Updated user.
+   */
+  @RequirePermission(Permission.USER_UPDATE)
+  @Patch(':id/status')
+  async toggleStatus(@Param('id') id: string, @Body() dto: ToggleUserStatusDto): Promise<any> {
+    return this.UserService.toggleUserStatus(id, dto);
   }
 
   /**

@@ -8,6 +8,7 @@ import { UpdateUserDto } from './dtos/update-user.dto';
 import { UserResponseDto } from './dtos/user-response.dto';
 import { Status } from '../../../../core/shared/definitions';
 import { mapUserToResponse } from './mappers/user-response.mapper';
+import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
 
 /**
  * Service for managing  users.
@@ -104,6 +105,18 @@ export class UserService {
   }
 
   /**
+   * Toggles user active status.
+   * @param id - User ID.
+   * @param dto - New status.
+   * @returns Updated user.
+   */
+  async toggleUserStatus(id: string, dto: ToggleUserStatusDto): Promise<User> {
+    const user = await this.findOne(id);
+    user.status = dto.active ? Status.ACTIVE : Status.INACTIVE;
+    return this.userRepository.save(user);
+  }
+
+  /**
    * Hard deletes a  user.
    * @param {string} id - User ID.
    * @returns {Promise<void>}
@@ -124,10 +137,8 @@ export class UserService {
     const role = await this.roleRepository.findOne({ where: { id: roleId } });
     if (!role) throw new NotFoundException('Role not found');
 
-    // initialize roles array if missing
     if (!user.roles) user.roles = [] as any;
 
-    // avoid duplicates
     const already = (user.roles as any[]).some((r) => r.id === role.id || r === role.id);
     if (!already) {
       (user.roles as any[]).push(role);

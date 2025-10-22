@@ -8,23 +8,21 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
-  UseGuards,
+  Query,
 } from '@nestjs/common';
 import { PlatformUserService } from './platform-user.service';
 import { CreatePlatformUserDto } from './dtos/create-platform-user.dto';
 import { UpdatePlatformUserDto } from './dtos/update-platform-user.dto';
-import { PlatformAuthGuard } from '../guards/platform-auth.guard';
-import { PlatformPermissionGuard } from '../platform-permissions/guards/platform-permission.guard';
 import { RequirePlatformPermission } from '../platform-permissions/decorators/platform-permissions.decorator';
 import { PlatformPermission } from '../../../../core/shared/definitions';
 import { PlatformUser } from './decorators/platform-user.decorator';
 import type { JwtPayload } from '@orelnaranjod/flex-shared-lib';
+import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
 
 /**
  * Controller for managing platform users.
  * @class PlatformUserController
  */
-@UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
 @Controller('platform/users')
 export class PlatformUserController {
   constructor(private readonly platformUserService: PlatformUserService) {}
@@ -43,12 +41,16 @@ export class PlatformUserController {
 
   /**
    * Retrieves all platform users.
-   * @returns {Promise<PlatformUser[]>} List of users.
+   * @param page - Page number (default: 1).
+   * @param limit - Number of items per page (default: 10, max: 100).
+   * @returns {Promise<PlatformUserListResponseDto>} Paginated list of users.
    */
   @RequirePlatformPermission(PlatformPermission.USER_VIEW_ALL)
   @Get()
-  async findAll() {
-    return this.platformUserService.findAll();
+  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.platformUserService.findAll(pageNum, limitNum);
   }
 
   /**
@@ -60,7 +62,6 @@ export class PlatformUserController {
   @RequirePlatformPermission(PlatformPermission.USER_ROLE_VIEW_OWN)
   @Get('owner')
   async getOwnerInfo(@PlatformUser() user: JwtPayload) {
-    // JwtPayload.sub contains the user id (UUID) per token generation.
     return this.platformUserService.getOwnerInfo(user.sub);
   }
 
@@ -108,6 +109,18 @@ export class PlatformUserController {
   @Patch(':id/restore')
   async restore(@Param('id') id: string): Promise<void> {
     return this.platformUserService.restore(id);
+  }
+
+  /**
+   * Toggles user active status.
+   * @param id - User ID.
+   * @param dto - New status.
+   * @returns Updated user.
+   */
+  @RequirePlatformPermission(PlatformPermission.USER_UPDATE)
+  @Patch(':id/status')
+  async toggleStatus(@Param('id') id: string, @Body() dto: ToggleUserStatusDto): Promise<any> {
+    return this.platformUserService.toggleUserStatus(id, dto);
   }
 
   /**

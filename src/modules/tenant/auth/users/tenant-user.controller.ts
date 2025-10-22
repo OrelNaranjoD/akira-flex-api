@@ -29,7 +29,7 @@ import { CreateTenantUserCommand } from './commands/create-tenant-user.command';
  * Controller for managing tenant users.
  * @class TenantUserController
  */
-@Controller('user-tenants')
+@Controller('tenants/users')
 export class TenantUserController {
   constructor(
     private readonly tenantUserService: TenantUserService,
@@ -38,8 +38,8 @@ export class TenantUserController {
 
   /**
    * Creates a new tenant user.
-   * @param createUserTenantDto - The data transfer object containing user information.
-   * @returns The created tenant user.
+   * @param createUserTenantDto - User information.
+   * @returns Created tenant user.
    */
   @RequireTenantPermission(TenantPermission.USER_CREATE)
   @Post()
@@ -49,22 +49,10 @@ export class TenantUserController {
   }
 
   /**
-   * Registers a new tenant user.
-   * @param dto - The data transfer object containing registration information.
-   * @returns The registered tenant user.
-   */
-  @RequireTenantPermission(TenantPermission.USER_CREATE)
-  @Post('register')
-  @HttpCode(HttpStatus.CREATED)
-  async register(@Body() dto: CreateTenantUserDto) {
-    return this.tenantUserService.registerUser(dto);
-  }
-
-  /**
    * Retrieves all tenant users with pagination.
-   * @param page - The page number for pagination.
-   * @param limit - The number of items per page.
-   * @returns A paginated list of tenant users.
+   * @param page - Page number.
+   * @param limit - Items per page.
+   * @returns Paginated list of tenant users.
    */
   @RequireTenantPermission(TenantPermission.USER_VIEW_ALL)
   @Get()
@@ -76,8 +64,8 @@ export class TenantUserController {
   }
 
   /**
-   * Retrieves the profile of the currently authenticated tenant user.
-   * @returns The current tenant user's profile.
+   * Retrieves current tenant user's profile.
+   * @returns Current user's profile.
    */
   @RequireTenantPermission(TenantPermission.USER_VIEW)
   @Get('me')
@@ -87,8 +75,8 @@ export class TenantUserController {
 
   /**
    * Retrieves a tenant user by ID.
-   * @param id - The ID of the tenant user.
-   * @returns The tenant user with the specified ID.
+   * @param id - User ID.
+   * @returns Tenant user.
    */
   @Get(':id')
   async findOne(@Param('id') id: string) {
@@ -97,9 +85,9 @@ export class TenantUserController {
 
   /**
    * Updates a tenant user.
-   * @param id - The ID of the tenant user to update.
-   * @param updateUserTenantDto - The data transfer object containing updated user information.
-   * @returns The updated tenant user.
+   * @param id - User ID.
+   * @param updateUserTenantDto - Updated user information.
+   * @returns Updated tenant user.
    */
   @RequireTenantPermission(TenantPermission.USER_UPDATE)
   @Patch(':id')
@@ -108,8 +96,8 @@ export class TenantUserController {
   }
 
   /**
-   * Soft deletes (deactivates) a tenant user.
-   * @param id - The ID of the tenant user to remove.
+   * Soft deletes a tenant user.
+   * @param id - User ID.
    * @returns Void.
    */
   @RequireTenantPermission(TenantPermission.USER_DISABLE)
@@ -120,10 +108,10 @@ export class TenantUserController {
   }
 
   /**
-   * Toggles user active status (enable/disable).
-   * @param id - The ID of the tenant user.
-   * @param dto - The data transfer object containing the new status.
-   * @returns The updated tenant user.
+   * Toggles user active status.
+   * @param id - User ID.
+   * @param dto - New status.
+   * @returns Updated tenant user.
    */
   @RequireTenantPermission(TenantPermission.USER_UPDATE)
   @Patch(':id/status')
@@ -133,9 +121,9 @@ export class TenantUserController {
 
   /**
    * Updates user roles.
-   * @param id - The ID of the tenant user.
-   * @param dto - The data transfer object containing the new roles.
-   * @returns The updated tenant user.
+   * @param id - User ID.
+   * @param dto - New roles.
+   * @returns Updated tenant user.
    */
   @RequireTenantPermission(TenantPermission.USER_UPDATE)
   @Patch(':id/roles')
@@ -144,9 +132,24 @@ export class TenantUserController {
   }
 
   /**
+   * Assign role to user.
+   * @param userId - User ID.
+   * @param roleName - Role name to assign.
+   * @returns Updated tenant user.
+   */
+  @RequireTenantPermission(TenantPermission.ROLE_ASSIGN)
+  @Post(':userId/roles/:roleName')
+  async assignRole(
+    @Param('userId') userId: string,
+    @Param('roleName') roleName: string
+  ): Promise<any> {
+    return this.tenantUserService.assignRole(userId, roleName);
+  }
+
+  /**
    * Transfers ownership to another user.
-   * @param dto - The data transfer object containing transfer information.
-   * @returns A message indicating the result of the operation.
+   * @param dto - Transfer information.
+   * @returns Success message.
    */
   @RequireTenantPermission(TenantPermission.USER_UPDATE)
   @Post('transfer-ownership')
@@ -155,8 +158,8 @@ export class TenantUserController {
   }
 
   /**
-   * Hard deletes a tenant user (permanent deletion).
-   * @param id - The ID of the tenant user to hard delete.
+   * Hard deletes a tenant user.
+   * @param id - User ID.
    * @returns Void.
    */
   @RequireTenantPermission(TenantPermission.USER_DISABLE)

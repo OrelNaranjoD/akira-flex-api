@@ -4,7 +4,9 @@ import {
   ConflictException,
   ForbiddenException,
   Scope,
+  Inject,
 } from '@nestjs/common';
+import { REQUEST } from '@nestjs/core';
 import { Repository, EntityTarget, ObjectLiteral } from 'typeorm';
 import { TenantUser } from './tenant-user.entity';
 import { TenantRole } from '../roles/entities/tenant-role.entity';
@@ -20,6 +22,8 @@ import { TenantConnectionService } from '../../../../modules/platform/tenants/se
 import { TenantService } from '../../../../modules/platform/tenants/services/tenant.service';
 import { Tenant } from '../../../../modules/platform/tenants/entities/tenant.entity';
 import { TenantContextService } from '../../../../core/shared/tenant-context.service';
+import type { Request } from 'express';
+import { JwtPayload } from '../../../../core/shared/definitions';
 
 /**
  * Service responsible for tenant user management operations.
@@ -29,9 +33,9 @@ import { TenantContextService } from '../../../../core/shared/tenant-context.ser
 export class TenantUserService {
   private tenant: Tenant | null = null;
   private schemaName: string | null = null;
-  private readonly authUser: { sub?: string; tenantId?: string };
 
   constructor(
+    @Inject(REQUEST) private readonly request: Request,
     private readonly tenantConnectionService: TenantConnectionService,
     private readonly tenantService: TenantService,
     private readonly tenantContextService: TenantContextService
@@ -79,9 +83,9 @@ export class TenantUserService {
   }
 
   /**
-   * Creates a new user tenant.
-   * @param {CreateTenantUserDto} dto - The data transfer object containing user information.
-   * @returns {Promise<TenantUser>} The created tenant user.
+   * Creates user.
+   * @param dto - User data.
+   * @returns Created user.
    */
   async createUser(dto: CreateTenantUserDto): Promise<TenantUser> {
     const userRepository = await this.getRepository(TenantUser);
@@ -94,19 +98,19 @@ export class TenantUserService {
   }
 
   /**
-   * Registers a new user tenant.
-   * @param {CreateTenantUserDto} dto - The data transfer object containing registration information.
-   * @returns {Promise<TenantUser>} The registered tenant user.
+   * Registers user.
+   * @param dto - Registration data.
+   * @returns Registered user.
    */
   async registerUser(dto: CreateTenantUserDto): Promise<TenantUser> {
     return this.createUser(dto);
   }
 
   /**
-   * Retrieves all tenant users with pagination.
-   * @param {number} page - The page number for pagination.
-   * @param {number} limit - The number of items per page.
-   * @returns {Promise<TenantUserListResponseDto>} A paginated list of tenant users.
+   * Finds all users with pagination.
+   * @param page - Page number.
+   * @param limit - Items per page.
+   * @returns Paginated users.
    */
   async findAll(page: number = 1, limit: number = 10): Promise<TenantUserListResponseDto> {
     const userRepository = await this.getRepository(TenantUser);
@@ -126,9 +130,9 @@ export class TenantUserService {
       ])
       .orderBy(
         `CASE
-        WHEN 'OWNER' = ANY(user.roles) THEN 1
-        WHEN 'ADMIN' = ANY(user.roles) THEN 2
-        WHEN 'MANAGER' = ANY(user.roles) THEN 3
+        WHEN 'OWNER' = ANY(string_to_array(user.roles, ',')) THEN 1
+        WHEN 'ADMIN' = ANY(string_to_array(user.roles, ',')) THEN 2
+        WHEN 'MANAGER' = ANY(string_to_array(user.roles, ',')) THEN 3
         ELSE 4
         END`
       )
@@ -147,9 +151,9 @@ export class TenantUserService {
   }
 
   /**
-   * Finds a user tenant by ID.
-   * @param {string} id - The ID of the tenant user.
-   * @returns {Promise<TenantUser>} The tenant user entity.
+   * Finds user by ID.
+   * @param id - User ID.
+   * @returns User entity.
    */
   async findOne(id: string): Promise<TenantUser> {
     const userRepository = await this.getRepository(TenantUser);
@@ -159,10 +163,10 @@ export class TenantUserService {
   }
 
   /**
-   * Updates a user tenant.
-   * @param {string} id - The ID of the tenant user to update.
-   * @param {UpdateTenantUserDto} dto - The data transfer object containing updated user information.
-   * @returns {Promise<TenantUser>} The updated tenant user.
+   * Updates user.
+   * @param id - User ID.
+   * @param dto - Update data.
+   * @returns Updated user.
    */
   async update(id: string, dto: UpdateTenantUserDto): Promise<TenantUser> {
     const userRepository = await this.getRepository(TenantUser);
@@ -175,9 +179,8 @@ export class TenantUserService {
   }
 
   /**
-   * Deactivates a user tenant (soft delete).
-   * @param {string} id - The ID of the tenant user to remove.
-   * @returns {Promise<void>}
+   * Soft deletes user.
+   * @param id - User ID.
    */
   async remove(id: string): Promise<void> {
     const userRepository = await this.getRepository(TenantUser);
@@ -190,10 +193,10 @@ export class TenantUserService {
   }
 
   /**
-   * Toggles user active status (enable/disable user).
-   * @param {string} id - The ID of the tenant user.
-   * @param {ToggleUserStatusDto} dto - The data transfer object containing the new status.
-   * @returns {Promise<TenantUser>} The updated tenant user.
+   * Toggles user status.
+   * @param id - User ID.
+   * @param dto - New status.
+   * @returns Updated user.
    */
   async toggleUserStatus(id: string, dto: ToggleUserStatusDto): Promise<TenantUser> {
     const userRepository = await this.getRepository(TenantUser);
@@ -205,7 +208,7 @@ export class TenantUserService {
       const ownerCount = await userRepository
         .createQueryBuilder('user')
         .where('user.active = :active', { active: true })
-        .andWhere(':role = ANY(user.roles)', { role: 'OWNER' })
+        .andWhere(":role = ANY(string_to_array(user.roles, ','))", { role: 'OWNER' })
         .getCount();
       if (ownerCount <= 1) {
         throw new ForbiddenException('Cannot disable the last owner of the tenant');
@@ -216,10 +219,10 @@ export class TenantUserService {
   }
 
   /**
-   * Updates roles for a specific tenant user.
-   * @param {string} id - The ID of the tenant user.
-   * @param {UpdateUserRolesDto} dto - The DTO containing the new list of roles.
-   * @returns {Promise<TenantUser>} The updated tenant user.
+   * Updates user roles.
+   * @param id - User ID.
+   * @param dto - New roles.
+   * @returns Updated user.
    */
   async updateUserRoles(id: string, dto: UpdateUserRolesDto): Promise<TenantUser> {
     const userRepository = await this.getRepository(TenantUser);
@@ -240,9 +243,33 @@ export class TenantUserService {
   }
 
   /**
-   * Transfers ownership from current owner to another user.
-   * @param {TransferOwnershipDto} dto - DTO containing the new owner's ID.
-   * @returns {Promise<{ message: string }>} A success message.
+   * Assign a role to a user.
+   * @param userId - User ID.
+   * @param roleName - Role name to assign.
+   * @returns Updated user.
+   */
+  async assignRole(userId: string, roleName: string): Promise<TenantUser> {
+    const userRepository = await this.getRepository(TenantUser);
+    const roleRepository = await this.getRepository(TenantRole);
+
+    const user = await userRepository.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const role = await roleRepository.findOne({ where: { name: roleName } });
+    if (!role) throw new NotFoundException('Role not found');
+
+    if (!user.roles.includes(roleName)) {
+      user.roles = [...user.roles, roleName];
+      return userRepository.save(user);
+    }
+
+    return user;
+  }
+
+  /**
+   * Transfers ownership.
+   * @param dto - Transfer data.
+   * @returns Success message.
    */
   async transferOwnership(dto: TransferOwnershipDto): Promise<{ message: string }> {
     const userRepository = await this.getRepository(TenantUser);
@@ -255,7 +282,7 @@ export class TenantUserService {
 
     const currentOwner = await userRepository
       .createQueryBuilder('user')
-      .where(':role = ANY(user.roles)', { role: 'OWNER' })
+      .where(":role = ANY(string_to_array(user.roles, ','))", { role: 'OWNER' })
       .getOne();
     if (!currentOwner) {
       throw new NotFoundException('Current owner not found');
@@ -272,9 +299,8 @@ export class TenantUserService {
   }
 
   /**
-   * Hard deletes a user tenant (permanent deletion).
-   * @param {string} id - The ID of the user to delete.
-   * @returns {Promise<void>}
+   * Hard deletes user.
+   * @param id - User ID.
    */
   async hardDeleteUser(id: string): Promise<void> {
     const userRepository = await this.getRepository(TenantUser);
@@ -286,7 +312,7 @@ export class TenantUserService {
       const ownerCount = await userRepository
         .createQueryBuilder('user')
         .where('user.active = :active', { active: true })
-        .andWhere(':role = ANY(user.roles)', { role: 'OWNER' })
+        .andWhere(":role = ANY(string_to_array(user.roles, ','))", { role: 'OWNER' })
         .getCount();
       if (ownerCount <= 1) {
         throw new ForbiddenException('Cannot delete the last owner of the tenant');
@@ -296,11 +322,12 @@ export class TenantUserService {
   }
 
   /**
-   * Gets current user profile with roles and permissions.
-   * @returns {Promise<any>} The current tenant user's profile.
+   * Gets current user profile.
+   * @returns User profile.
    */
   async getCurrentUserProfile(): Promise<any> {
-    const userId = this.authUser?.sub;
+    const payload = this.request.user as JwtPayload;
+    const userId = payload.sub;
     if (!userId) {
       throw new ForbiddenException('User ID (sub) not found in auth payload');
     }

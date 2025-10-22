@@ -10,6 +10,8 @@ import { CreateTenantDto } from '../dtos/create-tenant.dto';
 import { UpdateTenantDto } from '../dtos/update-tenant.dto';
 import { Tenant } from '../entities/tenant.entity';
 import { TenantResponseDto } from '../dtos/tenant-response.dto';
+import { TenantFiltersDto } from '../dtos/tenant-filters.dto';
+import { TenantListResponseDto } from '../dtos/tenant-list-response.dto';
 
 /**
  * Service responsible for tenant management operations.
@@ -17,11 +19,6 @@ import { TenantResponseDto } from '../dtos/tenant-response.dto';
  */
 @Injectable()
 export class TenantService {
-  /**
-   * Creates an instance of TenantService.
-   * @param {Repository<Tenant>} tenantRepository - Repository for tenant entities.
-   * @param {DataSource} dataSource - Data source for database operations.
-   */
   constructor(
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
@@ -36,7 +33,6 @@ export class TenantService {
    * @throws {InternalServerErrorException} If schema creation fails.
    */
   async create(createTenantDto: CreateTenantDto): Promise<TenantResponseDto> {
-    // Check if tenant with same name or subdomain already exists
     const existingTenant = await this.tenantRepository.findOne({
       where: [{ name: createTenantDto.name }, { subdomain: createTenantDto.subdomain }],
     });
@@ -45,15 +41,13 @@ export class TenantService {
       throw new ConflictException('Tenant with this name or subdomain already exists');
     }
 
-    // Generate schema name
-    const schemaName = `tenant_${createTenantDto.subdomain.toLowerCase()}`;
+    const schemaName = createTenantDto.subdomain.toLowerCase();
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // Create the tenant record
       const tenant = this.tenantRepository.create({
         ...createTenantDto,
         schemaName,
@@ -61,10 +55,12 @@ export class TenantService {
 
       const savedTenant = await this.tenantRepository.save(tenant);
 
-      // Create the dedicated schema
+      if (process.env.NODE_ENV !== 'production') {
+        await queryRunner.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+      }
+
       await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS "${schemaName}"`);
 
-      // Apply base tenant migrations (simplified example)
       await this.applyBaseSchemaMigrations(queryRunner, schemaName);
 
       await queryRunner.commitTransaction();
@@ -74,7 +70,6 @@ export class TenantService {
       await queryRunner.rollbackTransaction();
 
       if (error.code === '23505') {
-        // Unique violation
         throw new ConflictException('Tenant with this name or subdomain already exists');
       }
 
@@ -91,10 +86,8 @@ export class TenantService {
    * @private
    */
   private async applyBaseSchemaMigrations(queryRunner: any, schemaName: string): Promise<void> {
-    // Set search path to the tenant schema
     await queryRunner.query(`SET search_path TO "${schemaName}"`);
 
-    // Create base tables (simplified example)
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -108,17 +101,75 @@ export class TenantService {
       )
     `);
 
-    // Reset search path to default
     await queryRunner.query(`SET search_path TO public`);
   }
 
   /**
-   * Retrieves all tenants.
-   * @returns {Promise<TenantResponseDto[]>} List of all tenants.
+   * Retrieves all tenants with optional filters and pagination.
+   * @param filters - Optional filters to apply.
+   * @param page - Page number (1-based, default: 1).
+   * @param limit - Number of items per page (default: 10, max: 100).
+   * @returns {Promise<TenantListResponseDto>} Paginated and filtered list of tenants.
    */
-  async findAll(): Promise<TenantResponseDto[]> {
-    const tenants = await this.tenantRepository.find();
-    return tenants.map((tenant) => this.mapToResponseDto(tenant));
+  async findAll(
+    filters?: TenantFiltersDto,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<TenantListResponseDto> {
+    const validPage = Math.max(1, page);
+    const validLimit = Math.min(Math.max(1, limit), 100);
+    const skip = (validPage - 1) * validLimit;
+
+    const queryBuilder = this.tenantRepository.createQueryBuilder('tenant');
+
+    if (filters) {
+      if (filters.name) {
+        queryBuilder.andWhere('LOWER(tenant.name) LIKE LOWER(:name)', {
+          name: `%${filters.name}%`,
+        });
+      }
+
+      if (filters.subdomain) {
+        queryBuilder.andWhere('LOWER(tenant.subdomain) LIKE LOWER(:subdomain)', {
+          subdomain: `%${filters.subdomain}%`,
+        });
+      }
+
+      if (filters.email) {
+        queryBuilder.andWhere('LOWER(tenant.email) LIKE LOWER(:email)', {
+          email: `%${filters.email}%`,
+        });
+      }
+
+      if (filters.active !== undefined) {
+        queryBuilder.andWhere('tenant.active = :active', { active: filters.active });
+      }
+
+      if (filters.createdFrom) {
+        queryBuilder.andWhere('tenant.createdAt >= :createdFrom', {
+          createdFrom: filters.createdFrom,
+        });
+      }
+
+      if (filters.createdTo) {
+        queryBuilder.andWhere('tenant.createdAt <= :createdTo', {
+          createdTo: filters.createdTo,
+        });
+      }
+    }
+
+    queryBuilder.orderBy('tenant.createdAt', 'DESC').skip(skip).take(validLimit);
+
+    const [tenants, total] = await queryBuilder.getManyAndCount();
+    const totalPages = Math.ceil(total / validLimit);
+
+    return {
+      tenants: tenants.map((tenant) => this.mapToResponseDto(tenant)),
+      total,
+      page: validPage,
+      limit: validLimit,
+      totalPages,
+    };
   }
 
   /**
@@ -206,7 +257,6 @@ export class TenantService {
       return this.mapToResponseDto(updatedTenant);
     } catch (error) {
       if (error.code === '23505') {
-        // Unique violation
         throw new ConflictException('Tenant with this name or subdomain already exists');
       }
       throw error;

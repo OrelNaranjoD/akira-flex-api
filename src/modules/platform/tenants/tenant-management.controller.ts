@@ -8,11 +8,14 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { TenantService } from './services/tenant.service';
 import { CreateTenantDto } from './dtos/create-tenant.dto';
 import { UpdateTenantDto } from './dtos/update-tenant.dto';
 import { TenantResponseDto } from './dtos/tenant-response.dto';
+import { TenantFiltersDto } from './dtos/tenant-filters.dto';
+import { TenantListResponseDto } from './dtos/tenant-list-response.dto';
 import { RequirePlatformPermission } from '../auth/platform-permissions/decorators/platform-permissions.decorator';
 import { PlatformPermission } from '../../../core/shared/definitions';
 import { Public } from '../../../core/decorators/public.decorator';
@@ -47,15 +50,24 @@ export class TenantManagementController {
   }
 
   /**
-   * Retrieves all tenants (platform admin only).
-   * @returns {Promise<TenantResponseDto[]>} List of all tenants.
+   * Retrieves all tenants with optional filters and pagination (platform admin only).
+   * @param filters - Optional filters for searching tenants.
+   * @param page - Page number (default: 1).
+   * @param limit - Number of items per page (default: 10).
+   * @returns {Promise<TenantListResponseDto>} Paginated and filtered list of tenants.
    * @description GET /.
    * Roles: super_admin, admin.
    */
   @RequirePlatformPermission(PlatformPermission.TENANT_VIEW_ALL)
   @Get()
-  async findAll(): Promise<TenantResponseDto[]> {
-    return this.tenantService.findAll();
+  async findAll(
+    @Query() filters?: TenantFiltersDto,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ): Promise<TenantListResponseDto> {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.tenantService.findAll(filters, pageNum, limitNum);
   }
 
   /**

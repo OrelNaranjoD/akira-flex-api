@@ -26,4 +26,11 @@ export class TokenResponseDto implements DefTokenResponseDto {
    */
   @Expose()
   tokenType: string = 'Bearer';
+
+  /**
+   * JWT refresh token.
+   * @type {string}
+   */
+  @Expose()
+  refreshToken?: string;
 }

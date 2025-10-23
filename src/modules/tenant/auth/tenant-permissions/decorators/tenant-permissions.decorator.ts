@@ -7,4 +7,4 @@ import { TenantPermission } from '@shared';
  * @returns Metadata setter for tenant permissions.
  */
 export const RequireTenantPermission = (...permissions: TenantPermission[]) =>
-  SetMetadata('permissions', permissions);
+  SetMetadata('tenant-permissions', permissions);

@@ -13,6 +13,7 @@ import {
 import { PlatformUserService } from './platform-user.service';
 import { CreatePlatformUserDto } from './dtos/create-platform-user.dto';
 import { UpdatePlatformUserDto } from './dtos/update-platform-user.dto';
+import { PlatformUserFiltersDto } from './dtos/platform-user-filters.dto';
 import { RequirePlatformPermission } from '../platform-permissions/decorators/platform-permissions.decorator';
 import { PlatformPermission } from '../../../../core/shared/definitions';
 import { PlatformUser } from './decorators/platform-user.decorator';
@@ -40,17 +41,22 @@ export class PlatformUserController {
   }
 
   /**
-   * Retrieves all platform users.
+   * Retrieves all platform users with optional filters.
    * @param page - Page number (default: 1).
    * @param limit - Number of items per page (default: 10, max: 100).
+   * @param filters - Optional filters to apply to the search.
    * @returns {Promise<PlatformUserListResponseDto>} Paginated list of users.
    */
   @RequirePlatformPermission(PlatformPermission.USER_VIEW_ALL)
   @Get()
-  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+  async findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query() filters?: PlatformUserFiltersDto
+  ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.platformUserService.findAll(pageNum, limitNum);
+    return this.platformUserService.findAll(pageNum, limitNum, filters);
   }
 
   /**

@@ -76,4 +76,17 @@ export class PlatformUserResponseDto implements DefCreatePlatformUserDto {
    */
   @Expose()
   lastLogin?: Date;
+
+  /**
+   * Associated tenant information (if user belongs to a tenant).
+   * @type {object}
+   */
+  @Expose()
+  tenant?: {
+    id: string;
+    name: string;
+    subdomain: string;
+    email: string;
+    active: boolean;
+  };
 }

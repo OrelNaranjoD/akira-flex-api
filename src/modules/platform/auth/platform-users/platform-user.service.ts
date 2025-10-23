@@ -6,6 +6,7 @@ import { PlatformRole } from '../platform-roles/entities/platform-role.entity';
 import { CreatePlatformUserDto } from './dtos/create-platform-user.dto';
 import { UpdatePlatformUserDto } from './dtos/update-platform-user.dto';
 import { PlatformUserListResponseDto } from './dtos/platform-user-list-response.dto';
+import { PlatformUserFiltersDto } from './dtos/platform-user-filters.dto';
 import { TenantService } from '../../tenants/services/tenant.service';
 import { RegisterDto, UserRoles } from '@orelnaranjod/flex-shared-lib';
 import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
@@ -56,35 +57,140 @@ export class PlatformUserService {
   }
 
   /**
-   * Retrieves all platform users with pagination.
+   * Retrieves all platform users with pagination and optional filters.
    * @param page - Page number (1-based, default: 1).
    * @param limit - Number of items per page (default: 10, max: 100).
+   * @param filters - Optional filters to apply to the search.
    * @returns {Promise<PlatformUserListResponseDto>} Paginated list of users.
    */
-  async findAll(page: number = 1, limit: number = 10): Promise<PlatformUserListResponseDto> {
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+    filters?: PlatformUserFiltersDto
+  ): Promise<PlatformUserListResponseDto> {
     const validPage = Math.max(1, page);
     const validLimit = Math.min(Math.max(1, limit), 100);
     const skip = (validPage - 1) * validLimit;
 
-    const [users, total] = await this.userRepository.findAndCount({
-      select: [
-        'id',
-        'email',
-        'firstName',
-        'lastName',
-        'phone',
-        'roles',
-        'active',
-        'createdAt',
-        'updatedAt',
-        'lastLogin',
-      ],
-      relations: ['roles', 'roles.permissions'],
-      skip,
-      take: validLimit,
-      order: { createdAt: 'DESC' },
-    });
+    if (!filters) {
+      const [users, total] = await this.userRepository.findAndCount({
+        select: [
+          'id',
+          'email',
+          'firstName',
+          'lastName',
+          'phone',
+          'roles',
+          'active',
+          'createdAt',
+          'updatedAt',
+          'lastLogin',
+        ],
+        relations: ['roles', 'roles.permissions'],
+        skip,
+        take: validLimit,
+        order: { createdAt: 'DESC' },
+      });
 
+      const totalPages = Math.ceil(total / validLimit);
+
+      const usersWithTenant = await Promise.all(
+        users.map(async (user) => {
+          const tenant = await this.getUserTenant(user.email);
+          return {
+            ...user,
+            tenant: tenant || undefined,
+          };
+        })
+      );
+
+      return {
+        users: usersWithTenant,
+        total,
+        page: validPage,
+        limit: validLimit,
+        totalPages,
+      };
+    }
+
+    const queryBuilder = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'roles')
+      .leftJoinAndSelect('roles.permissions', 'permissions')
+      .select([
+        'user.id',
+        'user.email',
+        'user.firstName',
+        'user.lastName',
+        'user.phone',
+        'user.roles',
+        'user.active',
+        'user.createdAt',
+        'user.updatedAt',
+        'user.lastLogin',
+      ])
+      .orderBy('user.createdAt', 'DESC')
+      .skip(skip)
+      .take(validLimit);
+
+    // Apply filters
+    if (filters.email) {
+      queryBuilder.andWhere('LOWER(user.email) LIKE LOWER(:email)', {
+        email: `%${filters.email}%`,
+      });
+    }
+
+    if (filters.firstName) {
+      queryBuilder.andWhere('LOWER(user.firstName) LIKE LOWER(:firstName)', {
+        firstName: `%${filters.firstName}%`,
+      });
+    }
+
+    if (filters.lastName) {
+      queryBuilder.andWhere('LOWER(user.lastName) LIKE LOWER(:lastName)', {
+        lastName: `%${filters.lastName}%`,
+      });
+    }
+
+    if (filters.phone) {
+      queryBuilder.andWhere('user.phone LIKE :phone', {
+        phone: `%${filters.phone}%`,
+      });
+    }
+
+    if (filters.role) {
+      queryBuilder.andWhere('roles.name = :role', { role: filters.role });
+    }
+
+    if (typeof filters.active === 'boolean') {
+      queryBuilder.andWhere('user.active = :active', { active: filters.active });
+    }
+
+    if (filters.createdFrom) {
+      queryBuilder.andWhere('user.createdAt >= :createdFrom', {
+        createdFrom: filters.createdFrom,
+      });
+    }
+
+    if (filters.createdTo) {
+      queryBuilder.andWhere('user.createdAt <= :createdTo', {
+        createdTo: filters.createdTo,
+      });
+    }
+
+    if (filters.lastLoginFrom) {
+      queryBuilder.andWhere('user.lastLogin >= :lastLoginFrom', {
+        lastLoginFrom: filters.lastLoginFrom,
+      });
+    }
+
+    if (filters.lastLoginTo) {
+      queryBuilder.andWhere('user.lastLogin <= :lastLoginTo', {
+        lastLoginTo: filters.lastLoginTo,
+      });
+    }
+
+    const [users, total] = await queryBuilder.getManyAndCount();
     const totalPages = Math.ceil(total / validLimit);
 
     const usersWithTenant = await Promise.all(

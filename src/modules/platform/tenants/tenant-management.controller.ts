@@ -71,6 +71,19 @@ export class TenantManagementController {
   }
 
   /**
+   * Retrieves a specific tenant by ID (platform admin only).
+   * @param {string} tenantId - ID of the tenant to retrieve.
+   * @returns {Promise<TenantResponseDto>} The requested tenant data.
+   * @description GET /:tenantId.
+   * Roles: super_admin, admin.
+   */
+  @RequirePlatformPermission(PlatformPermission.TENANT_VIEW)
+  @Get(':tenantId')
+  async findOne(@Param('tenantId') tenantId: string): Promise<TenantResponseDto> {
+    return this.tenantService.findOne(tenantId);
+  }
+
+  /**
    * Debug endpoint to list all tenants (temporary for debugging).
    * @returns {Promise<any[]>} List of all tenants with details.
    */

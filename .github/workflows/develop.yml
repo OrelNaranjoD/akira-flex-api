@@ -64,6 +64,10 @@ jobs:
           JWT_PLATFORM_SECRET: test-jwt-platform-secret-that-is-at-least-32-characters-long
           JWT_TENANT_SECRET: test-jwt-tenant-secret-that-is-at-least-32-characters-long
           SUPER_ADMIN_PASSWORD: TestPassword123!
+          TYPEORM_LOGGING: false
+          TYPEORM_DROP_SCHEMA: true
+          TYPEORM_SEEDER: true
+          TYPEORM_SYNCHRONIZE: true
 
       - name: Run e2e tests
         run: npm run test:e2e
@@ -74,6 +78,10 @@ jobs:
           JWT_PLATFORM_SECRET: test-jwt-platform-secret-that-is-at-least-32-characters-long
           JWT_TENANT_SECRET: test-jwt-tenant-secret-that-is-at-least-32-characters-long
           SUPER_ADMIN_PASSWORD: TestPassword123!
+          TYPEORM_LOGGING: false
+          TYPEORM_DROP_SCHEMA: true
+          TYPEORM_SEEDER: true
+          TYPEORM_SYNCHRONIZE: true
 
       - name: Build package
         run: npm run build

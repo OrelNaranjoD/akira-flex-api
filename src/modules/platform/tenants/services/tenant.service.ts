@@ -189,6 +189,22 @@ export class TenantService {
   }
 
   /**
+   * Retrieves a specific tenant by ID (internal use - returns full entity).
+   * @param {string} id - ID of the tenant to retrieve.
+   * @returns {Promise<Tenant>} The requested tenant entity.
+   * @throws {NotFoundException} If tenant is not found.
+   */
+  async findOneInternal(id: string): Promise<Tenant> {
+    const tenant = await this.tenantRepository.findOne({ where: { id } });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant with ID ${id} not found`);
+    }
+
+    return tenant;
+  }
+
+  /**
    * Retrieves multiple tenants by their IDs.
    * @param {string[]} ids - Array of tenant IDs to retrieve.
    * @returns {Promise<Tenant[]>} Array of found tenants.

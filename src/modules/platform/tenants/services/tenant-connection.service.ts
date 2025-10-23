@@ -12,10 +12,6 @@ import { createMultiTenantDataSource } from '../../../../core/database/multi-ten
 export class TenantConnectionService implements OnModuleDestroy {
   private readonly tenantDataSources: Map<string, DataSource> = new Map();
 
-  /**
-   * Creates an instance of TenantConnectionService.
-   * @param {ConfigService} configService - Configuration service.
-   */
   constructor(private readonly configService: ConfigService) {}
 
   /**
@@ -29,6 +25,8 @@ export class TenantConnectionService implements OnModuleDestroy {
     }
 
     const dataSource = await createMultiTenantDataSource(schemaName, this.configService);
+    await dataSource.query(`SET search_path TO "${schemaName}"`);
+
     this.tenantDataSources.set(schemaName, dataSource);
     return dataSource;
   }
@@ -44,7 +42,8 @@ export class TenantConnectionService implements OnModuleDestroy {
     entity: EntityTarget<T>
   ): Promise<Repository<T>> {
     const dataSource = await this.getTenantDataSource(schemaName);
-    return dataSource.getRepository(entity);
+    const repository = dataSource.getRepository(entity);
+    return repository;
   }
 
   /**

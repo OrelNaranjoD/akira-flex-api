@@ -13,6 +13,7 @@ import { TenantRole } from '../roles/entities/tenant-role.entity';
 import { CreateTenantUserDto } from './dtos/create-tenant-user.dto';
 import { UpdateTenantUserDto } from './dtos/update-tenant-user.dto';
 import { TenantUserListResponseDto } from './dtos/tenant-user-list-response.dto';
+import { TenantUserFiltersDto } from './dtos/tenant-user-filters.dto';
 import { TenantOwnerFiltersDto } from './dtos/tenant-owner-filters.dto';
 import { TenantOwnerListResponseDto } from './dtos/tenant-owner-list-response.dto';
 import {
@@ -109,15 +110,21 @@ export class TenantUserService {
   }
 
   /**
-   * Finds all users with pagination.
+   * Finds all users with pagination and optional filters.
    * @param page - Page number.
    * @param limit - Items per page.
-   * @returns Paginated users.
+   * @param filters - Optional filters to apply to the search.
+   * @returns Paginated and filtered users.
    */
-  async findAll(page: number = 1, limit: number = 10): Promise<TenantUserListResponseDto> {
+  async findAll(
+    page: number = 1,
+    limit: number = 10,
+    filters?: TenantUserFiltersDto
+  ): Promise<TenantUserListResponseDto> {
     const userRepository = await this.getRepository(TenantUser);
     const skip = (page - 1) * limit;
-    const [users, total] = await userRepository
+
+    const queryBuilder = userRepository
       .createQueryBuilder('user')
       .select([
         'user.id',
@@ -129,7 +136,57 @@ export class TenantUserService {
         'user.active',
         'user.createdAt',
         'user.updatedAt',
-      ])
+      ]);
+
+    if (filters) {
+      if (filters.email) {
+        queryBuilder.andWhere('LOWER(user.email) LIKE LOWER(:email)', {
+          email: `%${filters.email}%`,
+        });
+      }
+
+      if (filters.firstName) {
+        queryBuilder.andWhere('LOWER(user.firstName) LIKE LOWER(:firstName)', {
+          firstName: `%${filters.firstName}%`,
+        });
+      }
+
+      if (filters.lastName) {
+        queryBuilder.andWhere('LOWER(user.lastName) LIKE LOWER(:lastName)', {
+          lastName: `%${filters.lastName}%`,
+        });
+      }
+
+      if (filters.phone) {
+        queryBuilder.andWhere('user.phone LIKE :phone', {
+          phone: `%${filters.phone}%`,
+        });
+      }
+
+      if (filters.role) {
+        queryBuilder.andWhere(":role = ANY(string_to_array(user.roles, ','))", {
+          role: filters.role,
+        });
+      }
+
+      if (typeof filters.active === 'boolean') {
+        queryBuilder.andWhere('user.active = :active', { active: filters.active });
+      }
+
+      if (filters.createdFrom) {
+        queryBuilder.andWhere('user.createdAt >= :createdFrom', {
+          createdFrom: filters.createdFrom,
+        });
+      }
+
+      if (filters.createdTo) {
+        queryBuilder.andWhere('user.createdAt <= :createdTo', {
+          createdTo: filters.createdTo,
+        });
+      }
+    }
+
+    queryBuilder
       .orderBy(
         `CASE
         WHEN 'OWNER' = ANY(string_to_array(user.roles, ',')) THEN 1
@@ -140,9 +197,11 @@ export class TenantUserService {
       )
       .addOrderBy('user.createdAt', 'ASC')
       .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+      .take(limit);
+
+    const [users, total] = await queryBuilder.getManyAndCount();
     const totalPages = Math.ceil(total / limit);
+
     return {
       users: users,
       total,

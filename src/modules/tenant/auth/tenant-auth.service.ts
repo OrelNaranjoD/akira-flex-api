@@ -22,6 +22,7 @@ import { TenantConnectionService } from '../../platform/tenants/services/tenant-
 import { TenantUser } from './users/tenant-user.entity';
 import { TenantRole } from './roles/entities/tenant-role.entity';
 import type { Request, Response } from 'express';
+import { TokenService } from '../../../core/token/token.service';
 import * as bcrypt from 'bcrypt';
 
 /**
@@ -35,8 +36,48 @@ export class TenantAuthService {
     private readonly userRepository: Repository<TenantUser>,
     private readonly jwtService: JwtService,
     private readonly tenantService: TenantService,
-    private readonly tenantConnectionService: TenantConnectionService
+    private readonly tenantConnectionService: TenantConnectionService,
+    private readonly tokenService: TokenService
   ) {}
+
+  /**
+   * Resolves tenant from request context.
+   * @param request - HTTP request.
+   * @param requireAuth - Whether tenant resolution requires authenticated user.
+   * @returns Resolved tenant.
+   * @private
+   */
+  private async resolveTenant(request: any, requireAuth: boolean = false): Promise<any> {
+    let tenant = request['tenant'];
+
+    if (!tenant || !tenant.id) {
+      if (requireAuth && request.user?.tenantId) {
+        tenant = await this.tenantService.findOneInternal(String(request.user.tenantId));
+      } else {
+        if (request.headers['x-tenant-id']) {
+          tenant = await this.tenantService.findOneInternal(
+            request.headers['x-tenant-id'] as string
+          );
+        } else if (request.headers['x-tenant-subdomain']) {
+          tenant = await this.tenantService.findBySubdomainInternal(
+            request.headers['x-tenant-subdomain'] as string
+          );
+        } else if (request.query['tenantId']) {
+          tenant = await this.tenantService.findOneInternal(request.query['tenantId'] as string);
+        } else if (request.query['tenant']) {
+          tenant = await this.tenantService.findBySubdomainInternal(
+            request.query['tenant'] as string
+          );
+        }
+      }
+    }
+
+    if (!tenant || !tenant.id) {
+      throw new ForbiddenException('Tenant not found or invalid');
+    }
+
+    return tenant;
+  }
 
   /**
    * Registers a new tenant user in the correct tenant schema.
@@ -75,6 +116,7 @@ export class TenantAuthService {
     const user = userRepository.create({
       ...registerDto,
       tenantId,
+      roles: ['USER'],
     }) as TenantUser;
     const savedUser = await userRepository.save(user);
 
@@ -154,7 +196,10 @@ export class TenantAuthService {
 
     user.lastLogin = new Date();
 
-    const { refreshToken, refreshTokenHash } = await this.generateAndHashRefreshToken(user);
+    const { refreshToken, refreshTokenHash } = await this.generateAndHashRefreshToken(
+      user,
+      loginDto.remember || false
+    );
     user.refreshTokenHash = refreshTokenHash;
 
     await userRepository.save(user);
@@ -205,33 +250,31 @@ export class TenantAuthService {
     const schemaName: string = (tenant as any).schemaName ?? (tenant as any).schema ?? '';
 
     let userPermissions: string[] = [];
-    if (schemaName && user.roles && user.roles.length > 0) {
-      try {
-        const roleRepository = await this.tenantConnectionService.getRepository(
-          schemaName,
-          TenantRole
-        );
-        const roles = await roleRepository.find({
-          where: user.roles.map((roleName) => ({ name: roleName })),
-        });
+    const effectiveRoles = user.roles && user.roles.length > 0 ? user.roles : ['USER'];
+    if (schemaName) {
+      const roleRepository = await this.tenantConnectionService.getRepository(
+        schemaName,
+        TenantRole
+      );
+      const roles = await roleRepository.find({
+        where: effectiveRoles.map((roleName) => ({ name: roleName })),
+      });
 
-        userPermissions = roles.flatMap((role) => role.permissions || []);
-        userPermissions = [...new Set(userPermissions)];
-      } catch (error) {
-        console.warn('Failed to resolve user permissions from roles:', error);
-      }
+      userPermissions = roles.flatMap((role) => role.permissions || []);
+      userPermissions = [...new Set(userPermissions)];
     }
 
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      roles: user.roles,
+      roles: effectiveRoles,
       permissions: userPermissions,
       tenantId,
+      schemaName,
       type: JwtPayloadType.TENANT,
     };
 
-    const accessToken = this.jwtService.sign({ ...payload } as JwtPayload);
+    const accessToken = await this.tokenService.generateToken(payload, { expiresIn: '1h' });
 
     return {
       accessToken,
@@ -329,27 +372,33 @@ export class TenantAuthService {
 
   /**
    * Generates a refresh token (JWT) with REFRESH type for tenant users.
-   * Refresh tokens have a fixed expiration of 7 days.
+   * Refresh tokens have a variable expiration based on remember flag.
    * @param user - The tenant user entity.
-   * @returns {string} - The generated refresh token.
+   * @param remember - Whether to remember the user (extends expiration).
+   * @returns {Promise<string>} - The generated refresh token.
    */
-  private generateRefreshToken(user: TenantUser): string {
+  private async generateRefreshToken(user: TenantUser, remember: boolean = false): Promise<string> {
+    const expiresIn = remember ? '7d' : '1d';
     const payload: { sub: string; email: string; type: JwtPayloadType } = {
       sub: user.id,
       email: user.email,
       type: JwtPayloadType.REFRESH,
     };
-    return this.jwtService.sign(payload, { expiresIn: '7d' });
+    return this.tokenService.generateToken(payload, { expiresIn });
   }
 
   /**
    * Generate refresh token and its hashed value to be stored in DB for tenant users.
    * Returns the plain refresh token and the hash to persist.
    * @param user - The tenant user entity.
+   * @param remember - Whether to remember the user.
    * @returns {Promise<{ refreshToken: string; refreshTokenHash: string }>} An object containing the plain refresh token and its hashed value.
    */
-  private async generateAndHashRefreshToken(user: TenantUser) {
-    const refreshToken = this.generateRefreshToken(user);
+  private async generateAndHashRefreshToken(
+    user: TenantUser,
+    remember: boolean = false
+  ): Promise<{ refreshToken: string; refreshTokenHash: string }> {
+    const refreshToken = await this.generateRefreshToken(user, remember);
     const saltRounds = 10;
     const refreshTokenHash = await bcrypt.hash(refreshToken, saltRounds);
     return { refreshToken, refreshTokenHash };
@@ -382,9 +431,9 @@ export class TenantAuthService {
   }> {
     let payload: JwtRefreshPayload;
     try {
-      payload = this.jwtService.verify<JwtRefreshPayload>(token);
+      payload = await this.tokenService.verifyToken<JwtRefreshPayload>(token);
     } catch (error) {
-      if (error.name === 'TokenExpiredError') {
+      if (error.message?.includes('expired')) {
         throw new UnauthorizedException('Refresh token expired');
       }
       throw new UnauthorizedException('Invalid refresh token');
@@ -433,18 +482,34 @@ export class TenantAuthService {
   }
 
   /**
-   * Handle refresh flow using request cookies and set rotated cookie on response.
-   * @param req - Express request (reads cookie).
-   * @param res - Express response (sets cookie).
-   * @param tenantId - ID of the tenant.
-   * @returns New authentication tokens.
+   * Refreshes tokens with tenant resolution.
+   * @param req - Request object.
+   * @param res - Response object.
+   * @param request - HTTP request for tenant resolution.
+   * @returns New tokens.
+   */
+  async refreshWithTenantResolution(
+    req: Request,
+    res: Response,
+    request: any
+  ): Promise<TokenResponseDto> {
+    const tenant = await this.resolveTenant(request, true);
+    return this.refreshWithCookie(req, res, String(tenant.id));
+  }
+
+  /**
+   * Refreshes tokens using cookies.
+   * @param req - Request object.
+   * @param res - Response object.
+   * @param tenantId - Tenant ID.
+   * @returns New tokens.
    */
   async refreshWithCookie(
     req: Request,
     res: Response,
     tenantId: string
   ): Promise<TokenResponseDto> {
-    const refreshToken = String(req.cookies?.refresh_token || '');
+    const refreshToken = String(req.cookies?.tenant_refresh_token || '');
     if (!refreshToken) throw new UnauthorizedException('No refresh token');
 
     const { tokenResponse, refreshToken: newRefreshToken } = await this.refreshTokens(
@@ -461,7 +526,7 @@ export class TenantAuthService {
         path: '/',
         maxAge: 604800000,
       };
-      res.cookie('refresh_token', newRefreshToken, cookieOptions);
+      res.cookie('tenant_refresh_token', newRefreshToken, cookieOptions);
     }
 
     return tokenResponse;
@@ -487,7 +552,7 @@ export class TenantAuthService {
       try {
         let payload: JwtRefreshPayload;
         try {
-          payload = this.jwtService.verify<JwtRefreshPayload>(token);
+          payload = await this.tokenService.verifyToken<JwtRefreshPayload>(token);
         } catch {
           return { message: 'Logged out' };
         }
@@ -517,17 +582,34 @@ export class TenantAuthService {
       }
       return { message: 'Logged out' };
     }
-
     return { message: 'Logged out' };
   }
 
   /**
-   * Logout using cookies: revoke refresh token (if present) or force logout by userId, clear cookie.
-   * @param req - Express request (reads cookie).
-   * @param res - Express response (clears cookie).
-   * @param userId - Optional user id to force logout.
-   * @param tenantId - ID of the tenant.
-   * @returns An object with a logout message.
+   * Logout with tenant resolution.
+   * @param req - Request object.
+   * @param res - Response object.
+   * @param userId - Optional user ID.
+   * @param request - HTTP request for tenant resolution.
+   * @returns Success message.
+   */
+  async logoutWithTenantResolution(
+    req: Request,
+    res: Response,
+    userId: string | undefined,
+    request: any
+  ): Promise<{ message: string }> {
+    const tenant = await this.resolveTenant(request, true);
+    return this.logoutFromRequest(req, res, userId, String(tenant.id));
+  }
+
+  /**
+   * Logout using cookies.
+   * @param req - Request object.
+   * @param res - Response object.
+   * @param userId - Optional user ID.
+   * @param tenantId - Tenant ID.
+   * @returns Success message.
    */
   async logoutFromRequest(
     req: Request,
@@ -535,7 +617,7 @@ export class TenantAuthService {
     userId?: string,
     tenantId?: string
   ): Promise<{ message: string }> {
-    const refreshToken = String(req.cookies?.refresh_token || '');
+    const refreshToken = String(req.cookies?.tenant_refresh_token || '');
     const result = await this.logout(refreshToken || undefined, userId, tenantId);
 
     const clearOptions = {
@@ -544,7 +626,38 @@ export class TenantAuthService {
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
     };
-    res.clearCookie('refresh_token', clearOptions);
+    res.clearCookie('tenant_refresh_token', clearOptions);
     return result;
+  }
+
+  /**
+   * Authenticates a tenant user with automatic tenant resolution.
+   * @param loginDto - User login credentials.
+   * @param request - HTTP request for tenant resolution.
+   * @param res - Response object to set refresh cookie.
+   * @returns Authentication tokens.
+   */
+  async loginWithTenantResolution(
+    loginDto: LoginRequestDto,
+    request: any,
+    res: Response
+  ): Promise<TokenResponseDto> {
+    const tenant = await this.resolveTenant(request, false);
+
+    const { tokenResponse, refreshToken } = await this.login(String(tenant.id), loginDto);
+
+    if (refreshToken) {
+      const isProduction = process.env.NODE_ENV === 'production';
+      const cookieOptions = {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? ('none' as const) : ('lax' as const),
+        path: '/',
+        maxAge: 604800000,
+      };
+      res.cookie('tenant_refresh_token', refreshToken, cookieOptions);
+    }
+
+    return tokenResponse;
   }
 }

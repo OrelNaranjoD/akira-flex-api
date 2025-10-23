@@ -14,6 +14,7 @@ import { CreateTenantUserDto } from './dtos/create-tenant-user.dto';
 import { TenantUserService } from './tenant-user.service';
 import { UpdateTenantUserDto } from './dtos/update-tenant-user.dto';
 import { TenantUserListResponseDto } from './dtos/tenant-user-list-response.dto';
+import { TenantUserFiltersDto } from './dtos/tenant-user-filters.dto';
 import { TenantOwnerFiltersDto } from './dtos/tenant-owner-filters.dto';
 import { TenantOwnerListResponseDto } from './dtos/tenant-owner-list-response.dto';
 import {
@@ -51,18 +52,20 @@ export class TenantUserController {
   }
 
   /**
-   * Retrieves all tenant users with pagination.
+   * Retrieves all tenant users with pagination and optional filters.
    * @param page - Page number.
    * @param limit - Items per page.
-   * @returns Paginated list of tenant users.
+   * @param filters - Optional filters for searching users.
+   * @returns Paginated and filtered list of tenant users.
    */
   @RequireTenantPermission(TenantPermission.USER_VIEW_ALL)
   @Get()
   async findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query() filters?: TenantUserFiltersDto
   ): Promise<TenantUserListResponseDto> {
-    return this.tenantUserService.findAll(page, limit);
+    return this.tenantUserService.findAll(page, limit, filters);
   }
 
   /**

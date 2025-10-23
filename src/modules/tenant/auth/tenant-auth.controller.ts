@@ -1,20 +1,10 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Param,
-  Request,
-  Get,
-  ForbiddenException,
-  Req,
-  Res,
-} from '@nestjs/common';
+import { Controller, Post, Body, Param, Request, Get, Req, Res } from '@nestjs/common';
 import { TenantAuthService } from './tenant-auth.service';
 import { LoginRequestDto } from './dtos/login-request.dto';
 import { TokenResponseDto } from './dtos/token-response.dto';
 import { RegisterDto } from './dtos/register.dto';
 import { RequireTenantPermission } from './tenant-permissions/decorators/tenant-permissions.decorator';
-import { PlatformRole, TenantPermission } from '../../../core/shared/definitions';
+import { TenantPermission, JwtPayload } from '../../../core/shared/definitions';
 import { TenantService } from '../../platform/tenants/services/tenant.service';
 import type { Request as ExpressRequest, Response as ExpressResponse } from 'express';
 import { Public } from '../../../core/decorators/public.decorator';
@@ -22,9 +12,9 @@ import { Public } from '../../../core/decorators/public.decorator';
 /**
  * Controller for tenant authentication operations.
  * @class TenantAuthController
- * @description /auth/tenant/:Roles:Id.
+ * @description /auth/tenant.
  */
-@Controller('/tenant/auth')
+@Controller('/auth/tenant')
 export class TenantAuthController {
   constructor(
     private readonly authService: TenantAuthService,
@@ -32,91 +22,39 @@ export class TenantAuthController {
   ) {}
 
   /**
-   * Authenticates a tenant user (can use subdomain resolution).
-   * @param {LoginRequestDto} loginRequestDto - User login credentials.
-   * @param {Request} request - HTTP request.
-   * @param {Response} res - Response object to set refresh cookie.
-   * @returns {Promise<TokenResponseDto>} Authentication tokens.
-   * @description POST /login.
+   * Authenticates a tenant user.
+   * @param loginRequestDto - User login credentials.
+   * @param request - HTTP request.
+   * @param res - Response object to set refresh cookie.
+   * @returns Authentication tokens.
    */
   @Public()
   @Post('login')
   async login(
     @Body() loginRequestDto: LoginRequestDto,
-    @Request() request,
+    @Request() request: ExpressRequest,
     @Res({ passthrough: true }) res: ExpressResponse
   ): Promise<TokenResponseDto> {
-    let tenant = request['tenant'];
-
-    if (!tenant || !tenant.id) {
-      if (request.headers['x-tenant-id']) {
-        tenant = await this.tenantService.findOneInternal(request.headers['x-tenant-id'] as string);
-      } else if (request.headers['x-tenant-subdomain']) {
-        tenant = await this.tenantService.findBySubdomainInternal(
-          request.headers['x-tenant-subdomain'] as string
-        );
-      } else if (request.query['tenantId']) {
-        tenant = await this.tenantService.findOneInternal(request.query['tenantId'] as string);
-      } else if (request.query['tenant']) {
-        tenant = await this.tenantService.findBySubdomainInternal(
-          request.query['tenant'] as string
-        );
-      }
-    }
-
-    if (!tenant || !tenant.id) {
-      throw new ForbiddenException('Tenant not found or invalid');
-    }
-
-    const { tokenResponse, refreshToken } = await this.authService.login(
-      String(tenant.id),
-      loginRequestDto
-    );
-
-    if (refreshToken) {
-      const cookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? ('none' as const) : ('lax' as const),
-        path: '/',
-        maxAge: 604800000, // 7 days
-      };
-      res.cookie('refresh_token', refreshToken, cookieOptions);
-    }
-
-    return tokenResponse;
+    return this.authService.loginWithTenantResolution(loginRequestDto, request, res);
   }
 
   /**
-   * Registers a new tenant user (admin only).
-   * @param {string} tenantId - ID of the tenant.
-   * @param {RegisterDto} registerDto - User registration data.
-   * @param {Request} request - HTTP request.
-   * @returns {Promise<TokenResponseDto>} Authentication tokens.
-   * @throws {ForbiddenException} If the authenticated user tries to create users in other tenants.
-   * @description POST /register.
+   * Registers new tenant user.
+   * @param registerDto - User data.
+   * @param request - HTTP request.
+   * @returns Tokens.
    */
-  @RequireTenantPermission(TenantPermission.USER_CREATE)
   @Post('register')
-  async register(
-    @Param('tenantId') tenantId: string,
-    @Body() registerDto: RegisterDto,
-    @Request() request
-  ): Promise<TokenResponseDto> {
-    const userTenantId = request.user.tenantId;
-    const userRoles = request.user.roles || [];
-
-    if (!userRoles.includes(PlatformRole.SUPER_ADMIN) && userTenantId !== tenantId) {
-      throw new ForbiddenException('Cannot create users in other tenants');
-    }
-
-    return this.authService.register(tenantId, registerDto);
+  @RequireTenantPermission(TenantPermission.USER_CREATE)
+  async register(@Body() registerDto: RegisterDto, @Request() request): Promise<TokenResponseDto> {
+    const targetTenantId = String(request.user.tenantId);
+    return this.authService.register(targetTenantId, registerDto);
   }
 
   /**
-   * Debug endpoint to list users in a tenant (temporary for debugging).
-   * @param {string} tenantId - ID of the tenant.
-   * @returns {Promise<any[]>} List of users.
+   * Debug endpoint for users.
+   * @param tenantId - Tenant ID.
+   * @returns User list.
    */
   @Get('debug-users/:tenantId')
   async debugUsers(@Param('tenantId') tenantId: string): Promise<any[]> {
@@ -124,12 +62,11 @@ export class TenantAuthController {
   }
 
   /**
-   * Refreshes authentication tokens using a valid refresh token.
-   * @param {Request} req - Request object to read refresh cookie.
-   * @param {Response} res - Response object to set rotated refresh cookie.
-   * @param {Request} request - HTTP request for tenant resolution.
-   * @returns {Promise<TokenResponseDto>} New authentication tokens.
-   * @description POST /refresh-token.
+   * Refreshes authentication tokens.
+   * @param req - Request object.
+   * @param res - Response object.
+   * @param request - HTTP request.
+   * @returns New tokens.
    */
   @Post('refresh-token')
   async refreshToken(
@@ -137,39 +74,16 @@ export class TenantAuthController {
     @Res({ passthrough: true }) res: ExpressResponse,
     @Request() request
   ): Promise<TokenResponseDto> {
-    let tenant = request['tenant'];
-
-    if (!tenant || !tenant.id) {
-      if (request.headers['x-tenant-id']) {
-        tenant = await this.tenantService.findOneInternal(request.headers['x-tenant-id'] as string);
-      } else if (request.headers['x-tenant-subdomain']) {
-        tenant = await this.tenantService.findBySubdomainInternal(
-          request.headers['x-tenant-subdomain'] as string
-        );
-      } else if (request.query['tenantId']) {
-        tenant = await this.tenantService.findOneInternal(request.query['tenantId'] as string);
-      } else if (request.query['tenant']) {
-        tenant = await this.tenantService.findBySubdomainInternal(
-          request.query['tenant'] as string
-        );
-      }
-    }
-
-    if (!tenant || !tenant.id) {
-      throw new ForbiddenException('Tenant not found or invalid');
-    }
-
-    return this.authService.refreshWithCookie(req, res, String(tenant.id));
+    return this.authService.refreshWithTenantResolution(req, res, request);
   }
 
   /**
-   * Logout user by invalidating the refresh token.
-   * @param {Request} req - Request object to read refresh cookie.
-   * @param {Response} res - Response object to clear cookie.
-   * @param {Request} request - HTTP request for tenant resolution.
-   * @param {string} [userId] - Optional user id to force logout (admin action).
-   * @returns {Promise<{ message: string }>} Logout confirmation message.
-   * @description POST /logout.
+   * Logs out current user.
+   * @param req - Request object.
+   * @param res - Response object.
+   * @param request - HTTP request.
+   * @param userId - Optional user ID.
+   * @returns Success message.
    */
   @Post('logout')
   async logout(
@@ -178,28 +92,30 @@ export class TenantAuthController {
     @Request() request,
     @Body('userId') userId?: string
   ): Promise<{ message: string }> {
-    let tenant = request['tenant'];
+    return this.authService.logoutWithTenantResolution(req, res, userId, request);
+  }
 
-    if (!tenant || !tenant.id) {
-      if (request.headers['x-tenant-id']) {
-        tenant = await this.tenantService.findOneInternal(request.headers['x-tenant-id'] as string);
-      } else if (request.headers['x-tenant-subdomain']) {
-        tenant = await this.tenantService.findBySubdomainInternal(
-          request.headers['x-tenant-subdomain'] as string
-        );
-      } else if (request.query['tenantId']) {
-        tenant = await this.tenantService.findOneInternal(request.query['tenantId'] as string);
-      } else if (request.query['tenant']) {
-        tenant = await this.tenantService.findBySubdomainInternal(
-          request.query['tenant'] as string
-        );
-      }
-    }
-
-    if (!tenant || !tenant.id) {
-      throw new ForbiddenException('Tenant not found or invalid');
-    }
-
-    return this.authService.logoutFromRequest(req, res, userId, String(tenant.id));
+  /**
+   * Gets the current user's profile.
+   * @param request - HTTP request containing authenticated user.
+   * @returns User profile data.
+   */
+  @Get('profile')
+  async getProfile(@Request() request): Promise<any> {
+    const payload = request.user as JwtPayload;
+    const user = await this.authService.validatePayload(payload);
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      roles: user.roles,
+      active: user.active,
+      tenantId: user.tenantId,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      lastLogin: user.lastLogin,
+    };
   }
 }

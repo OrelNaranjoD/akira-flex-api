@@ -25,6 +25,8 @@
     "seed": "nestjs-console seed",
     "seed:force": "nestjs-console seed:force",
     "start:seed": "npm run build && npm run seed && npm run start:prod",
+    "schema:drop": "ts-node src/scripts/schema-drop.ts",
+    "schema:drop:test": "cross-env NODE_ENV=test ts-node src/scripts/schema-drop.ts",
     "copy-templates": "copyfiles -u 3 \"src/core/mail/templates/**/*\" dist/core/mail/templates"
   },
   "dependencies": {
@@ -36,6 +38,7 @@
     "@nestjs/mapped-types": "^2.1.0",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.6",
+    "@nestjs/schedule": "^6.0.1",
     "@nestjs/serve-static": "^5.0.3",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/terminus": "^11.0.0",
@@ -80,6 +83,7 @@
     "conventional-changelog-cli": "^5.0.0",
     "conventional-commits-parser": "^6.2.0",
     "copyfiles": "^2.4.1",
+    "cross-env": "^10.1.0",
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsdoc": "^57.0.8",

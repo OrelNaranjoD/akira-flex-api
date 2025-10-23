@@ -234,6 +234,8 @@ export enum PlatformPermission {
   AUDIT_VIEW = 'AUDIT_VIEW',
   AUDIT_VIEW_ALL = 'AUDIT_VIEW_ALL',
   AUDIT_TENANT_VIEW = 'AUDIT_TENANT_VIEW',
+
+  JWT_KEY_MANAGEMENT = 'JWT_KEY_MANAGEMENT',
 }
 
 export enum TenantPermission {
@@ -259,6 +261,7 @@ export interface JwtPayload {
   tenantId?: string;
   schemaName?: string;
   type: JwtPayloadType;
+  isSuperAdmin?: boolean;
 }
 
 export interface JwtEmailVerificationPayload {

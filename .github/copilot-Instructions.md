@@ -141,7 +141,9 @@ NestJS provides an excellent modular system for security.
 
 - **`@nestjs/passport` & `@nestjs/jwt`:** These are the standards. Use them.
 - **`Guards`:** All authentication (`AuthGuard`) and authorization (permissions/roles) logic should
-  live in Guards.
+  live in Guards. Guards are applied globally at the module level using `APP_GUARD` tokens.
+- **`@Public()` Decorator:** Use the `@Public()` decorator on controller methods that should be
+  accessible without authentication guards. This bypasses global guards for specific endpoints.
 - **Strategies (`JwtStrategy`):** Your `JwtStrategy` is responsible for validating the JWT and
   attaching the `payload` (e.g., `req.user`) to the `request` object.
 - **Custom Decorators:** Create custom decorators (e.g., `@AuthUser()`) to cleanly get the user from

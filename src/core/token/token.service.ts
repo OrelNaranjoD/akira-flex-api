@@ -11,14 +11,18 @@ import {
 import { User } from '../../modules/platform/auth/users/entities/user.entity';
 import { PlatformUser } from '../../modules/platform/auth/platform-users/entities/platform-user.entity';
 import { TokenResponseDto } from '../../modules/platform/auth/dtos/token-response.dto';
+import { JwtKeyManagerService } from './keys/jwt-key-manager.service';
 
 /**
- * Token service for generating and verifying JWT tokens.
+ * Token service for generating and verifying JWT tokens with key rotation support.
  * @class TokenService
  */
 @Injectable()
 export class TokenService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly jwtKeyManager: JwtKeyManagerService
+  ) {}
 
   /**
    * Generates a JWT token with custom payload and options.
@@ -27,23 +31,28 @@ export class TokenService {
    * @param options.expiresIn - Token expiration time (e.g., '1h', '600s').
    * @returns {string} - The generated JWT token.
    */
-  generateToken(payload: object, options?: { expiresIn?: string | number }): string {
-    return this.jwtService.sign(payload, options);
+  generateToken(payload: object, options?: { expiresIn?: string | number }): Promise<string> {
+    return this.jwtKeyManager.signToken(payload, options);
   }
 
   /**
    * Generates a refresh token (JWT) with REFRESH type.
-   * Refresh tokens have a fixed expiration of 7 days.
+   * Refresh tokens have expiration based on remember flag: 7 days if true, 1 day if false.
    * @param user - The user entity (PlatformUser or User).
+   * @param remember - Whether to remember the user (longer expiration).
    * @returns {string} - The generated refresh token.
    */
-  generateRefreshToken(user: PlatformUser | User): string {
+  async generateRefreshToken(
+    user: PlatformUser | User,
+    remember: boolean = false
+  ): Promise<string> {
     const payload: { sub: string; email: string; type: JwtPayloadType } = {
       sub: user.id,
       email: user.email,
       type: JwtPayloadType.REFRESH,
     };
-    return this.generateToken(payload, { expiresIn: '7d' });
+    const expiresIn = remember ? '7d' : '1d';
+    return this.generateToken(payload, { expiresIn });
   }
 
   /**
@@ -63,11 +72,11 @@ export class TokenService {
    * @returns {T} Decoded token payload.
    * @throws {UnauthorizedException} If the token is invalid or expired.
    */
-  verifyRefreshToken<T extends object>(token: string): T {
+  async verifyRefreshToken<T extends object>(token: string): Promise<T> {
     try {
-      return this.jwtService.verify<T>(token);
+      return await this.jwtKeyManager.verifyToken<T>(token);
     } catch (error) {
-      if (error.name === 'TokenExpiredError') {
+      if (error.message?.includes('expired')) {
         throw new UnauthorizedException('Refresh token expired');
       }
       throw new UnauthorizedException('Invalid refresh token');
@@ -78,10 +87,14 @@ export class TokenService {
    * Generate refresh token and its hashed value to be stored in DB.
    * Returns the plain refresh token and the hash to persist.
    * @param user - The user entity (PlatformUser or User).
+   * @param remember - Whether to remember the user (longer expiration).
    * @returns {Promise<{ refreshToken: string; refreshTokenHash: string }>} An object containing the plain refresh token and its hashed value.
    */
-  async generateAndHashRefreshToken(user: PlatformUser | User) {
-    const refreshToken = this.generateRefreshToken(user);
+  async generateAndHashRefreshToken(
+    user: PlatformUser | User,
+    remember: boolean = false
+  ): Promise<{ refreshToken: string; refreshTokenHash: string }> {
+    const refreshToken = await this.generateRefreshToken(user, remember);
     const refreshTokenHash = await this.hashToken(refreshToken);
     return { refreshToken, refreshTokenHash };
   }
@@ -118,16 +131,11 @@ export class TokenService {
    * @returns {TokenResponseDto} - The generated access token response.
    * @throws {UnauthorizedException} - If the user is not verified (for User entity).
    */
-  generateAccessToken(user: PlatformUser | User): TokenResponseDto {
+  async generateAccessToken(user: PlatformUser | User): Promise<TokenResponseDto> {
     let permissions = user.roles
       .flatMap((role) => role.permissions.map((p) => p.code))
       .filter((value, index, self) => self.indexOf(value) === index);
     const userType = 'active' in user ? 'PLATFORM' : 'LANDING';
-    console.log('generateAccessToken - user type detection:', {
-      hasActive: 'active' in user,
-      userType: (user as any).type,
-      determinedType: userType,
-    });
     if (userType === 'LANDING' && (user as any).status !== Status.ACTIVE) {
       throw new UnauthorizedException('User not verified');
     }
@@ -150,14 +158,19 @@ export class TokenService {
       ];
       permissions = [...new Set([...permissions, ...readPermissions])];
     }
+
+    const isSuperAdmin =
+      userType === 'PLATFORM' && user.roles.some((role) => role.name === 'SUPER_ADMIN');
+
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       roles: user.roles.map((r) => r.name),
       permissions,
       type: userType === 'PLATFORM' ? JwtPayloadType.PLATFORM : JwtPayloadType.LANDING,
+      ...(isSuperAdmin && { isSuperAdmin: true }),
     };
-    const accessToken = this.generateToken(payload, { expiresIn: '15m' });
+    const accessToken = await this.generateToken(payload, { expiresIn: '15m' });
     return {
       accessToken,
       expiresIn: 900,
@@ -172,7 +185,7 @@ export class TokenService {
    * @returns {string} - The generated email verification token.
    * @throws {UnauthorizedException} - If the token is invalid or expired.
    */
-  generateEmailVerificationToken(user: User): string {
+  async generateEmailVerificationToken(user: User): Promise<string> {
     const payload: JwtEmailVerificationPayload = {
       sub: user.id,
       email: user.email,
@@ -188,7 +201,7 @@ export class TokenService {
    * @returns {string} - The generated password reset token.
    * @throws {UnauthorizedException} - If the token is invalid or expired.
    */
-  generatePasswordResetToken(user: User): string {
+  async generatePasswordResetToken(user: User): Promise<string> {
     const payload: JwtPasswordResetPayload = {
       sub: user.id,
       email: user.email,
@@ -204,11 +217,11 @@ export class TokenService {
    * @throws {UnauthorizedException} If the token is invalid or expired.
    * @param token - The JWT token to verify.
    */
-  verifyToken<T extends object>(token: string): T {
+  async verifyToken<T extends object>(token: string): Promise<T> {
     try {
-      return this.jwtService.verify<T>(token);
+      return await this.jwtKeyManager.verifyToken<T>(token);
     } catch (error) {
-      if (error.name === 'TokenExpiredError') {
+      if (error.message?.includes('expired')) {
         throw new UnauthorizedException('Token expired');
       }
       throw new UnauthorizedException('Invalid token');

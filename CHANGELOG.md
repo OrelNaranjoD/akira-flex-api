@@ -1,3 +1,17 @@
+# [0.4.0](https://github.com/OrelNaranjoD/akira-flex-api/compare/v0.3.0...v0.4.0) (2025-10-16)
+
+
+### Features
+
+* **AFA-002 AFA-003:** implement refresh token ([2e0f200](https://github.com/OrelNaranjoD/akira-flex-api/commit/2e0f200b362ce0f04bccdf27c65d42ea905885fb))
+* **AFA-017:** enhance user registration error handling and messages ([ca2c346](https://github.com/OrelNaranjoD/akira-flex-api/commit/ca2c34691aa007bd44664e368f635d246e0a3b49))
+* **AFA-233:** enable SUPER_ADMIN to create tenant administrators ([3f73e4b](https://github.com/OrelNaranjoD/akira-flex-api/commit/3f73e4b441ae862e5da666b91d4b44d8cf7f61ce))
+* **AFA-253 AFA-254:** add debug request and response interceptors for logging in development mode ([3fbbcf7](https://github.com/OrelNaranjoD/akira-flex-api/commit/3fbbcf7b4a4107830acc95dc835599991a38010b))
+* **config:** update moduleNameMapper for shared module paths ([c9b0d34](https://github.com/OrelNaranjoD/akira-flex-api/commit/c9b0d34f73c3bce03f2c7d8fd13d5ef81ec58b37))
+* **test:** update PlatformAuthService tests to include role repository and refresh token handling ([abec509](https://github.com/OrelNaranjoD/akira-flex-api/commit/abec509fd730d709377e93e5238fc85e3182e592))
+
+
+
 # [0.3.0](https://github.com/OrelNaranjoD/akira-flex-api/compare/v0.2.0...v0.3.0) (2025-09-15)
 
 

@@ -71,15 +71,52 @@ jobs:
         run: npm run format
 
       - name: Run unit tests
-        run: npm run test
-        env:
-          NODE_ENV: test
-
-      - name: Run e2e tests
-        run: npm run test:e2e
+        run: |
+          echo "DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db" > .env
+          echo "DATABASE_TEST_URL=postgresql://test_user:test_password@localhost:5432/test_db" >> .env
+          echo "JWT_PLATFORM_SECRET=test-jwt-platform-secret-that-is-at-least-32-characters-long" >> .env
+          echo "JWT_TENANT_SECRET=test-jwt-tenant-secret-that-is-at-least-32-characters-long" >> .env
+          echo "SUPER_ADMIN_PASSWORD=TestPassword123!" >> .env
+          echo "TYPEORM_LOGGING=false" >> .env
+          echo "TYPEORM_DROP_SCHEMA=true" >> .env
+          echo "TYPEORM_SEEDER=true" >> .env
+          echo "TYPEORM_SYNCHRONIZE=true" >> .env
+          npm run test
         env:
           NODE_ENV: test
           DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          DATABASE_TEST_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          JWT_PLATFORM_SECRET: test-jwt-platform-secret-that-is-at-least-32-characters-long
+          JWT_TENANT_SECRET: test-jwt-tenant-secret-that-is-at-least-32-characters-long
+          SUPER_ADMIN_PASSWORD: TestPassword123!
+          TYPEORM_LOGGING: false
+          TYPEORM_DROP_SCHEMA: true
+          TYPEORM_SEEDER: true
+          TYPEORM_SYNCHRONIZE: true
+
+      - name: Run e2e tests
+        run: |
+          echo "DATABASE_URL=postgresql://test_user:test_password@localhost:5432/test_db" > .env
+          echo "DATABASE_TEST_URL=postgresql://test_user:test_password@localhost:5432/test_db" >> .env
+          echo "JWT_PLATFORM_SECRET=test-jwt-platform-secret-that-is-at-least-32-characters-long" >> .env
+          echo "JWT_TENANT_SECRET=test-jwt-tenant-secret-that-is-at-least-32-characters-long" >> .env
+          echo "SUPER_ADMIN_PASSWORD=TestPassword123!" >> .env
+          echo "TYPEORM_LOGGING=false" >> .env
+          echo "TYPEORM_DROP_SCHEMA=true" >> .env
+          echo "TYPEORM_SEEDER=true" >> .env
+          echo "TYPEORM_SYNCHRONIZE=true" >> .env
+          npm run test:e2e
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          DATABASE_TEST_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          JWT_PLATFORM_SECRET: test-jwt-platform-secret-that-is-at-least-32-characters-long
+          JWT_TENANT_SECRET: test-jwt-tenant-secret-that-is-at-least-32-characters-long
+          SUPER_ADMIN_PASSWORD: TestPassword123!
+          TYPEORM_LOGGING: false
+          TYPEORM_DROP_SCHEMA: true
+          TYPEORM_SEEDER: true
+          TYPEORM_SYNCHRONIZE: true
 
       - name: Build application
         run: npm run build

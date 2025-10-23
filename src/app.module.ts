@@ -80,7 +80,8 @@ import { platformEntities } from './core/database/entities';
         const isProduction = configService.get<string>('NODE_ENV') === 'production';
         const isTest = configService.get<string>('NODE_ENV') === 'test';
         const databaseUrl = isTest
-          ? configService.get<string>('DATABASE_TEST_URL')
+          ? configService.get<string>('DATABASE_TEST_URL') ||
+            configService.get<string>('DATABASE_URL')
           : configService.get<string>('DATABASE_URL');
         const isLoggerEnabled = configService.get<string>('TYPEORM_LOGGING') === 'true';
         const dropSchema =

@@ -12,6 +12,7 @@ import * as bcrypt from 'bcrypt';
 import { PlatformRole } from '../../platform-roles/entities/platform-role.entity';
 import { PlatformUserEntity } from '@shared';
 import { PlatformPermission } from '../../platform-permissions/entities/platform-permission.entity';
+import { Tenant } from '../../../tenants/entities/tenant.entity';
 
 /**
  * Enum for tenant request status.
@@ -82,6 +83,18 @@ export class PlatformUser implements PlatformUserEntity {
     inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
   })
   roles: any;
+
+  /**
+   * Tenants that this platform user can manage (for admin users).
+   * @type {Tenant[]}
+   */
+  @ManyToMany(() => Tenant, { eager: false })
+  @JoinTable({
+    name: 'platform_user_tenants',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'tenant_id', referencedColumnName: 'id' },
+  })
+  managedTenants: Tenant[];
 
   /**
    * Returns all permissions for the user derived from roles.

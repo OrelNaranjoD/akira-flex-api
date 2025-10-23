@@ -6,6 +6,7 @@ import { PlatformUserService } from '@platform/auth/platform-users/platform-user
 import { TenantService } from '../../../../../src/modules/platform/tenants/services/tenant.service';
 import { PlatformUser } from '@platform/auth/platform-users/entities/platform-user.entity';
 import { PlatformRole } from '@platform/auth/platform-roles/entities/platform-role.entity';
+import { Tenant } from '@platform/tenants/entities/tenant.entity';
 import { CreatePlatformUserDto } from '@platform/auth/platform-users/dtos/create-platform-user.dto';
 import { UpdatePlatformUserDto } from '@platform/auth/platform-users/dtos/update-platform-user.dto';
 
@@ -24,8 +25,12 @@ describe('PlatformUserService', () => {
       create: jest.fn(),
       save: jest.fn(),
       findAndCount: jest.fn(),
+      findByIds: jest.fn(),
     };
     roleRepo = { findOne: jest.fn() };
+    const tenantRepo = {
+      findByIds: jest.fn(),
+    };
     const tenantServiceMock = { findBySubdomain: jest.fn().mockResolvedValue(null) };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -41,6 +46,10 @@ describe('PlatformUserService', () => {
         {
           provide: getRepositoryToken(PlatformRole),
           useValue: roleRepo,
+        },
+        {
+          provide: getRepositoryToken(Tenant),
+          useValue: tenantRepo,
         },
       ],
     }).compile();
@@ -117,7 +126,9 @@ describe('PlatformUserService', () => {
       ];
       repo.findAndCount.mockResolvedValue([users, 2]);
       const result = await service.findAll();
-      expect(result.users).toEqual(users.map((u) => ({ ...u, tenant: undefined })));
+      expect(result.users).toEqual(
+        users.map((u) => ({ ...u, tenant: undefined, managedTenants: [] }))
+      );
       expect(result.total).toBe(2);
       expect(repo.findAndCount).toHaveBeenCalled();
     });
@@ -142,7 +153,7 @@ describe('PlatformUserService', () => {
           'updatedAt',
           'lastLogin',
         ],
-        relations: ['roles', 'roles.permissions'],
+        relations: ['roles', 'roles.permissions', 'managedTenants'],
       });
     });
     it('should throw NotFoundException if user does not exist', async () => {

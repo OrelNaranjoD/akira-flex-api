@@ -89,4 +89,17 @@ export class PlatformUserResponseDto implements DefCreatePlatformUserDto {
     email: string;
     active: boolean;
   };
+
+  /**
+   * Tenants managed by this platform user (for admin users).
+   * @type {object[]}
+   */
+  @Expose()
+  managedTenants?: {
+    id: string;
+    name: string;
+    subdomain: string;
+    email: string;
+    active: boolean;
+  }[];
 }

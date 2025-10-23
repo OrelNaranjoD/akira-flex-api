@@ -14,6 +14,7 @@ import { PlatformUserService } from './platform-user.service';
 import { CreatePlatformUserDto } from './dtos/create-platform-user.dto';
 import { UpdatePlatformUserDto } from './dtos/update-platform-user.dto';
 import { PlatformUserFiltersDto } from './dtos/platform-user-filters.dto';
+import { AssociateTenantsDto } from './dtos/associate-tenants.dto';
 import { RequirePlatformPermission } from '../platform-permissions/decorators/platform-permissions.decorator';
 import { PlatformPermission } from '../../../../core/shared/definitions';
 import { PlatformUser } from './decorators/platform-user.decorator';
@@ -153,5 +154,55 @@ export class PlatformUserController {
     @Param('roleId') roleId: string
   ): Promise<void> {
     return this.platformUserService.assignRole(userId, roleId);
+  }
+
+  /**
+   * Associate tenants to a platform user (for admin users).
+   * @param {string} userId - User ID.
+   * @param {AssociateTenantsDto} associateTenantsDto - Tenant association data.
+   * @returns {Promise<void>}
+   */
+  @RequirePlatformPermission(PlatformPermission.TENANT_UPDATE)
+  @Post(':userId/tenants')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async associateTenants(
+    @Param('userId') userId: string,
+    @Body() associateTenantsDto: AssociateTenantsDto
+  ): Promise<void> {
+    return this.platformUserService.associateTenants(userId, associateTenantsDto.tenantIds);
+  }
+
+  /**
+   * Dissociate tenants from a platform user.
+   * @param {string} userId - User ID.
+   * @param {AssociateTenantsDto} associateTenantsDto - Tenant dissociation data.
+   * @returns {Promise<void>}
+   */
+  @RequirePlatformPermission(PlatformPermission.TENANT_UPDATE)
+  @Delete(':userId/tenants')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async dissociateTenants(
+    @Param('userId') userId: string,
+    @Body() associateTenantsDto: AssociateTenantsDto
+  ): Promise<void> {
+    return this.platformUserService.dissociateTenants(userId, associateTenantsDto.tenantIds);
+  }
+
+  /**
+   * Get all tenants managed by a platform user.
+   * @param {string} userId - User ID.
+   * @returns {Promise<any[]>} Array of managed tenants.
+   */
+  @RequirePlatformPermission(PlatformPermission.USER_VIEW)
+  @Get(':userId/tenants')
+  async getManagedTenants(@Param('userId') userId: string): Promise<any[]> {
+    const tenants = await this.platformUserService.getManagedTenants(userId);
+    return tenants.map((tenant) => ({
+      id: tenant.id,
+      name: tenant.name,
+      subdomain: tenant.subdomain,
+      email: tenant.email,
+      active: tenant.active,
+    }));
   }
 }

@@ -10,6 +10,7 @@ import { PlatformUserFiltersDto } from './dtos/platform-user-filters.dto';
 import { TenantService } from '../../tenants/services/tenant.service';
 import { RegisterDto, UserRoles } from '@orelnaranjod/flex-shared-lib';
 import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
+import { Tenant } from '../../tenants/entities/tenant.entity';
 
 /**
  * Service for managing platform users.
@@ -22,6 +23,8 @@ export class PlatformUserService {
     private readonly userRepository: Repository<PlatformUser>,
     @InjectRepository(PlatformRole)
     private readonly roleRepository: Repository<PlatformRole>,
+    @InjectRepository(Tenant)
+    private readonly tenantRepository: Repository<Tenant>,
     private readonly tenantService: TenantService
   ) {}
 
@@ -86,7 +89,7 @@ export class PlatformUserService {
           'updatedAt',
           'lastLogin',
         ],
-        relations: ['roles', 'roles.permissions'],
+        relations: ['roles', 'roles.permissions', 'managedTenants'],
         skip,
         take: validLimit,
         order: { createdAt: 'DESC' },
@@ -100,6 +103,14 @@ export class PlatformUserService {
           return {
             ...user,
             tenant: tenant || undefined,
+            managedTenants:
+              (user as any).managedTenants?.map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                subdomain: t.subdomain,
+                email: t.email,
+                active: t.active,
+              })) || [],
           };
         })
       );
@@ -117,6 +128,7 @@ export class PlatformUserService {
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.roles', 'roles')
       .leftJoinAndSelect('roles.permissions', 'permissions')
+      .leftJoinAndSelect('user.managedTenants', 'managedTenants')
       .select([
         'user.id',
         'user.email',
@@ -128,6 +140,11 @@ export class PlatformUserService {
         'user.createdAt',
         'user.updatedAt',
         'user.lastLogin',
+        'managedTenants.id',
+        'managedTenants.name',
+        'managedTenants.subdomain',
+        'managedTenants.email',
+        'managedTenants.active',
       ])
       .orderBy('user.createdAt', 'DESC')
       .skip(skip)
@@ -199,6 +216,14 @@ export class PlatformUserService {
         return {
           ...user,
           tenant: tenant || undefined,
+          managedTenants:
+            (user as any).managedTenants?.map((t: any) => ({
+              id: t.id,
+              name: t.name,
+              subdomain: t.subdomain,
+              email: t.email,
+              active: t.active,
+            })) || [],
         };
       })
     );
@@ -232,7 +257,7 @@ export class PlatformUserService {
         'updatedAt',
         'lastLogin',
       ],
-      relations: ['roles', 'roles.permissions'],
+      relations: ['roles', 'roles.permissions', 'managedTenants'],
     });
     if (!user) throw new NotFoundException('User not found');
     return user;
@@ -295,7 +320,7 @@ export class PlatformUserService {
   }
 
   /**
-   * Assign a role to a user.
+   * Assign role to user.
    * @param {string} userId - User ID.
    * @param {string} roleId - Role ID.
    * @returns {Promise<void>}
@@ -312,6 +337,75 @@ export class PlatformUserService {
       (user.roles as any[]).push(role);
       await this.userRepository.save(user);
     }
+  }
+
+  /**
+   * Associate tenants to a platform user (for admin users).
+   * @param {string} userId - User ID.
+   * @param {string[]} tenantIds - Array of tenant IDs to associate.
+   * @returns {Promise<void>}
+   */
+  async associateTenants(userId: string, tenantIds: string[]): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['managedTenants'],
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const tenants = await this.tenantRepository.findByIds(tenantIds);
+    if (tenants.length !== tenantIds.length) {
+      throw new NotFoundException('One or more tenants not found');
+    }
+
+    if (!user.managedTenants) {
+      user.managedTenants = [];
+    }
+
+    for (const tenant of tenants) {
+      const alreadyAssociated = user.managedTenants.some((t) => t.id === tenant.id);
+      if (!alreadyAssociated) {
+        user.managedTenants.push(tenant);
+      }
+    }
+
+    await this.userRepository.save(user);
+  }
+
+  /**
+   * Dissociate tenants from a platform user.
+   * @param {string} userId - User ID.
+   * @param {string[]} tenantIds - Array of tenant IDs to dissociate.
+   * @returns {Promise<void>}
+   */
+  async dissociateTenants(userId: string, tenantIds: string[]): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['managedTenants'],
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (!user.managedTenants) {
+      return;
+    }
+
+    user.managedTenants = user.managedTenants.filter((tenant) => !tenantIds.includes(tenant.id));
+
+    await this.userRepository.save(user);
+  }
+
+  /**
+   * Get all tenants managed by a platform user.
+   * @param {string} userId - User ID.
+   * @returns {Promise<Tenant[]>} Array of managed tenants.
+   */
+  async getManagedTenants(userId: string): Promise<Tenant[]> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['managedTenants'],
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    return user.managedTenants || [];
   }
 
   /**

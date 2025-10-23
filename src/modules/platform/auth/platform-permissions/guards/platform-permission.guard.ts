@@ -23,7 +23,13 @@ export class PlatformPermissionGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const userPermissions: PlatformPermission[] = request.user?.permissions || [];
+    const user = request.user;
+
+    if (user?.roles?.includes('SUPER_ADMIN')) {
+      return true;
+    }
+
+    const userPermissions: PlatformPermission[] = user?.permissions || [];
 
     const hasAllPermissions = requiredPermissions.every((perm) => userPermissions.includes(perm));
 

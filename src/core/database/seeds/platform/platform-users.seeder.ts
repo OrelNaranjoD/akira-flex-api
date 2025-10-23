@@ -30,28 +30,33 @@ export class PlatformUsersSeeder {
     }
 
     for (const userData of PLATFORM_USERS_DATA) {
-      const role = await roleRepo.findOne({
-        where: { name: userData.roleName },
+      const existingUser = await userRepo.findOne({
+        where: { email: userData.email },
       });
 
-      if (!role) {
-        throw new Error(
-          `${userData.roleName} role not found. Please run PlatformRolesSeeder first.`
-        );
+      if (!existingUser) {
+        const role = await roleRepo.findOne({
+          where: { name: userData.roleName },
+        });
+
+        if (!role) {
+          throw new Error(
+            `${userData.roleName} role not found. Please run PlatformRolesSeeder first.`
+          );
+        }
+
+        const user = userRepo.create({
+          email: userData.email,
+          password: envPassword,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          phone: userData.phone,
+          roles: [role],
+          active: true,
+        });
+
+        await userRepo.save(user);
       }
-
-      const user = userRepo.create({
-        email: userData.email,
-        password: envPassword,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        phone: userData.phone,
-        roles: [role],
-        active: true,
-      });
-
-      await userRepo.save(user);
-      this.logger.log(`Created platform user: ${userData.email} with role: ${userData.roleName}`);
     }
   }
 }

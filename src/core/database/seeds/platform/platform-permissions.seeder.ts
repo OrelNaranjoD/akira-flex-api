@@ -18,7 +18,14 @@ export class PlatformPermissionsSeeder {
   async seed(): Promise<void> {
     const permissionRepo = this.dataSource.getRepository(PlatformPermission);
 
-    const savedPermissions = await permissionRepo.save(PLATFORM_PERMISSIONS_DATA);
-    this.logger.log(`Created ${savedPermissions.length} platform permissions.`);
+    for (const permissionData of PLATFORM_PERMISSIONS_DATA) {
+      const existingPermission = await permissionRepo.findOne({
+        where: { code: permissionData.code },
+      });
+
+      if (!existingPermission) {
+        await permissionRepo.save(permissionData);
+      }
+    }
   }
 }

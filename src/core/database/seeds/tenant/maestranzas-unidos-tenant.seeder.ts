@@ -4,7 +4,8 @@ import { TenantSeeder } from './tenant.seeder';
 import { Tenant } from '@platform/tenants/entities/tenant.entity';
 import { TenantConnectionService } from '@platform/tenants/services/tenant-connection.service';
 import { TenantUser } from '@tenant/auth/users/tenant-user.entity';
-import * as bcrypt from 'bcrypt';
+import { PlatformUserService } from '@platform/auth/platform-users/platform-user.service';
+import { PlatformRoleService } from '@platform/auth/platform-roles/platform-role.service';
 
 /**
  * Seeder for Maestranzas Unidos S.A. Tenant and its users.
@@ -16,7 +17,9 @@ export class MaestranzasUnidosTenantSeeder {
   constructor(
     private readonly tenantSeeder: TenantSeeder,
     private readonly configService: ConfigService,
-    private readonly tenantConnectionService: TenantConnectionService
+    private readonly tenantConnectionService: TenantConnectionService,
+    private readonly platformUserService: PlatformUserService,
+    private readonly platformRoleService: PlatformRoleService
   ) {}
 
   /**
@@ -33,7 +36,7 @@ export class MaestranzasUnidosTenantSeeder {
     });
 
     await this.createTenantUsers(tenant);
-    this.logger.log('Maestranzas Unidos S.A. tenant and users seeded successfully.');
+    await this.createPlatformUsersForOwners(tenant);
   }
 
   /**
@@ -149,6 +152,41 @@ export class MaestranzasUnidosTenantSeeder {
   }
 
   /**
+   * Creates platform users for tenant owners to allow platform-level control.
+   * @param tenant
+   */
+  private async createPlatformUsersForOwners(tenant: Tenant): Promise<void> {
+    const ownerUser = {
+      email: 'owner@maestranzasunidos.cl',
+      firstName: 'Maestranzas Unidos',
+      lastName: 'Owner (Platform)',
+      phone: '+56912345678',
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+    };
+
+    const existingUsers = await this.platformUserService.findAll(1, 1000);
+    const existingUser = existingUsers.users.find((u) => u.email === ownerUser.email);
+
+    if (!existingUser) {
+      const platformUser = await this.platformUserService.createUser({
+        email: ownerUser.email,
+        password: this.configService.get<string>('SUPER_ADMIN_PASSWORD') || 'defaultPassword',
+        firstName: ownerUser.firstName,
+        lastName: ownerUser.lastName,
+        phone: ownerUser.phone,
+        roles: ['USER'],
+      });
+
+      const allRoles = await this.platformRoleService.findAll();
+      const basicRole = allRoles.find((role) => role.name === 'USER');
+      if (basicRole) {
+        await this.platformUserService.assignRole(platformUser.id, basicRole.id);
+      }
+    }
+  }
+
+  /**
    * Creates or updates a tenant user.
    * @param repository
    * @param userData
@@ -176,32 +214,16 @@ export class MaestranzasUnidosTenantSeeder {
       where: { email: userData.email },
     });
 
-    const hashedPassword = await this.hashPassword(userData.password);
-
     if (existingUser) {
-      this.logger.log(`User ${userData.email} already exists, updating if necessary.`);
       Object.assign(existingUser, userData);
-      existingUser.password = hashedPassword;
       existingUser.active = true;
       await repository.save(existingUser);
     } else {
       const newUser = repository.create({
         ...userData,
-        password: hashedPassword,
         active: true,
       });
       await repository.save(newUser);
-      this.logger.log(`Created user: ${userData.email} with role: ${userData.roles[0]}`);
     }
-  }
-
-  /**
-   * Hashes a password using bcrypt.
-   * @param password Plain text password.
-   * @returns Hashed password.
-   */
-  private async hashPassword(password: string): Promise<string> {
-    const saltRounds = 10;
-    return bcrypt.hash(password, saltRounds);
   }
 }

@@ -6,7 +6,7 @@ export { BusinessRolesSeeder } from './platform/business-roles.seeder';
 export { TenantPermissionsSeeder } from './tenant/tenant-permissions.seeder';
 export { TenantSeeder } from './tenant/tenant.seeder';
 export { AkiraFlexTenantSeeder } from './tenant/akiraflex-tenant.seeder';
-export { TestCorpTenantSeeder } from './tenant/testcorp-tenant.seeder';
+export { RepUSATenantSeeder } from './tenant/repusa-tenant.seeder';
 export { MaestranzasUnidosTenantSeeder } from './tenant/maestranzas-unidos-tenant.seeder';
 export { PLATFORM_PERMISSIONS_DATA } from './data/platform-permissions.data';
 export { PLATFORM_USERS_DATA } from './data/platform-users.data';

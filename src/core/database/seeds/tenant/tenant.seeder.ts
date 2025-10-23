@@ -44,11 +44,10 @@ export class TenantSeeder {
     });
 
     if (existingTenant) {
-      this.logger.log(`Tenant ${tenantData.subdomain} already exists.`);
       return existingTenant;
     }
 
-    const schemaName = `tenant_${tenantData.subdomain}`;
+    const schemaName = tenantData.subdomain.toLowerCase();
     const tenant = tenantRepo.create({
       ...tenantData,
       schemaName,
@@ -60,7 +59,6 @@ export class TenantSeeder {
     await this.createTenantSchema(schemaName);
     await this.createTenantRoles(schemaName);
 
-    this.logger.log(`Tenant ${tenantData.subdomain} created successfully.`);
     return savedTenant;
   }
 
@@ -116,7 +114,5 @@ export class TenantSeeder {
         await tenantRoleRepository.save(role);
       }
     }
-
-    this.logger.log(`Tenant roles created in schema ${schemaName}.`);
   }
 }

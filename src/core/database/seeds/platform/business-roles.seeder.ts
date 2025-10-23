@@ -28,12 +28,17 @@ export class BusinessRolesSeeder {
     }));
 
     for (const roleData of roles) {
-      const role = roleRepo.create({
-        name: roleData.name as string,
-        permissions: roleData.permissions,
+      const existingRole = await roleRepo.findOne({
+        where: { name: roleData.name as string },
       });
-      await roleRepo.save(role);
-      this.logger.log(`Created business role: ${roleData.name}`);
+
+      if (!existingRole) {
+        const role = roleRepo.create({
+          name: roleData.name as string,
+          permissions: roleData.permissions,
+        });
+        await roleRepo.save(role);
+      }
     }
   }
 }

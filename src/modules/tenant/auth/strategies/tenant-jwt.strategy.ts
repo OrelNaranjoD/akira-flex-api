@@ -7,9 +7,10 @@ import { JwtService } from '@nestjs/jwt';
 import { JwtPayload, PlatformRole } from '../../../../core/shared/definitions';
 import { TenantAuthService } from '../tenant-auth.service';
 import { TenantService } from '../../../platform/tenants/services/tenant.service';
+import { JwtKeyManagerService } from '../../../../core/token/keys/jwt-key-manager.service';
 
 /**
- * JWT strategy for tenant authentication.
+ * JWT strategy for tenant authentication with key rotation support.
  * @class TenantJwtStrategy
  * @augments PassportStrategy(Strategy, 'tenant-jwt')
  */
@@ -17,32 +18,41 @@ import { TenantService } from '../../../platform/tenants/services/tenant.service
 export class TenantJwtStrategy extends PassportStrategy(Strategy, 'tenant-jwt') {
   /**
    * Creates an instance of TenantJwtStrategy.
-   * @param {ConfigService} configService - Configuration service.
-   * @param {TenantAuthService} authService - Tenant authentication service.
-   * @param {JwtService} jwtService - JWT service for manual token validation.
-   * @param {TenantService} tenantService - Tenant service.
+   * @param configService - Configuration service.
+   * @param authService - Tenant authentication service.
+   * @param jwtService - JWT service for manual token validation.
+   * @param tenantService - Tenant service.
+   * @param jwtKeyManager - JWT key manager for rotation support.
    */
   constructor(
     private readonly configService: ConfigService,
     private readonly authService: TenantAuthService,
     private readonly jwtService: JwtService,
-    private readonly tenantService: TenantService
+    private readonly tenantService: TenantService,
+    private readonly jwtKeyManager: JwtKeyManagerService
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: configService.get('JWT_SECRET', 'tenant-secret-key'),
+      secretOrKey: configService.get('JWT_TENANT_SECRET', 'tenant-secret-key'),
       ignoreExpiration: false,
       passReqToCallback: true,
     });
   }
 
   /**
-   * Validates JWT payload.
-   * @param {Request} req - HTTP request.
-   * @param {JwtPayload} payload - JWT payload.
-   * @returns {Promise<JwtPayload>} Validated payload.
+   * Validates JWT payload with key rotation support.
+   * @param req - HTTP request.
+   * @param token - Raw JWT token.
+   * @returns Validated payload.
    */
-  async validate(req: Request, payload: JwtPayload): Promise<JwtPayload> {
+  async validate(req: Request, token: string): Promise<JwtPayload> {
+    let payload: JwtPayload;
+    try {
+      payload = await this.jwtKeyManager.verifyToken<JwtPayload>(token);
+    } catch {
+      throw new Error('Token verification failed');
+    }
+
     console.log('TenantJwtStrategy - validating payload:', {
       sub: payload.sub,
       email: payload.email,

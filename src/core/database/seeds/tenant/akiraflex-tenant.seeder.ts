@@ -4,7 +4,8 @@ import { TenantSeeder } from './tenant.seeder';
 import { Tenant } from '@platform/tenants/entities/tenant.entity';
 import { TenantConnectionService } from '@platform/tenants/services/tenant-connection.service';
 import { TenantUser } from '@tenant/auth/users/tenant-user.entity';
-import * as bcrypt from 'bcrypt';
+import { PlatformUserService } from '@platform/auth/platform-users/platform-user.service';
+import { PlatformRoleService } from '@platform/auth/platform-roles/platform-role.service';
 
 /**
  * Seeder for AkiraFlex tenant and its users.
@@ -16,7 +17,9 @@ export class AkiraFlexTenantSeeder {
   constructor(
     private readonly tenantSeeder: TenantSeeder,
     private readonly configService: ConfigService,
-    private readonly tenantConnectionService: TenantConnectionService
+    private readonly tenantConnectionService: TenantConnectionService,
+    private readonly platformUserService: PlatformUserService,
+    private readonly platformRoleService: PlatformRoleService
   ) {}
 
   /**
@@ -33,6 +36,7 @@ export class AkiraFlexTenantSeeder {
     });
 
     await this.createTenantUsers(tenant);
+    await this.createPlatformUsersForOwners(tenant);
     this.logger.log('AkiraFlex tenant and users seeded successfully.');
   }
 
@@ -52,7 +56,6 @@ export class AkiraFlexTenantSeeder {
       throw new Error('SUPER_ADMIN_PASSWORD environment variable is required.');
     }
 
-    // Owner user
     await this.createOrUpdateUser(tenantUserRepository, {
       email: 'owner@akiraflex.com',
       password,
@@ -63,7 +66,6 @@ export class AkiraFlexTenantSeeder {
       tenantId: tenant.id,
     });
 
-    // Admin user
     await this.createOrUpdateUser(tenantUserRepository, {
       email: 'admin@akiraflex.com',
       password,
@@ -74,7 +76,6 @@ export class AkiraFlexTenantSeeder {
       tenantId: tenant.id,
     });
 
-    // Manager user
     await this.createOrUpdateUser(tenantUserRepository, {
       email: 'manager@akiraflex.com',
       password,
@@ -85,7 +86,6 @@ export class AkiraFlexTenantSeeder {
       tenantId: tenant.id,
     });
 
-    // Regular users
     const regularUsers = [
       {
         email: 'user1@akiraflex.com',
@@ -99,7 +99,6 @@ export class AkiraFlexTenantSeeder {
         lastName: 'User Two',
         phone: '+525544444444',
       },
-      // Additional users for pagination testing
       {
         email: 'user3@akiraflex.com',
         firstName: 'Test',
@@ -182,6 +181,41 @@ export class AkiraFlexTenantSeeder {
   }
 
   /**
+   * Creates platform users for tenant owners to allow platform-level control.
+   * @param tenant
+   */
+  private async createPlatformUsersForOwners(tenant: Tenant): Promise<void> {
+    const ownerUser = {
+      email: 'owner@akiraflex.com',
+      firstName: 'AkiraFlex',
+      lastName: 'Owner (Platform)',
+      phone: '+525566667777',
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+    };
+
+    const existingUsers = await this.platformUserService.findAll(1, 1000);
+    const existingUser = existingUsers.users.find((u) => u.email === ownerUser.email);
+
+    if (!existingUser) {
+      const platformUser = await this.platformUserService.createUser({
+        email: ownerUser.email,
+        password: this.configService.get<string>('SUPER_ADMIN_PASSWORD') || 'defaultPassword',
+        firstName: ownerUser.firstName,
+        lastName: ownerUser.lastName,
+        phone: ownerUser.phone,
+        roles: ['USER'],
+      });
+
+      const allRoles = await this.platformRoleService.findAll();
+      const basicRole = allRoles.find((role) => role.name === 'USER');
+      if (basicRole) {
+        await this.platformUserService.assignRole(platformUser.id, basicRole.id);
+      }
+    }
+  }
+
+  /**
    * Creates or updates a tenant user.
    * @param repository
    * @param userData
@@ -209,32 +243,16 @@ export class AkiraFlexTenantSeeder {
       where: { email: userData.email },
     });
 
-    const hashedPassword = await this.hashPassword(userData.password);
-
     if (existingUser) {
-      this.logger.log(`User ${userData.email} already exists, updating if necessary.`);
       Object.assign(existingUser, userData);
-      existingUser.password = hashedPassword;
       existingUser.active = true;
       await repository.save(existingUser);
     } else {
       const newUser = repository.create({
         ...userData,
-        password: hashedPassword,
         active: true,
       });
       await repository.save(newUser);
-      this.logger.log(`Created user: ${userData.email} with role: ${userData.roles[0]}`);
     }
-  }
-
-  /**
-   * Hashes a password using bcrypt.
-   * @param password Plain text password.
-   * @returns Hashed password.
-   */
-  private async hashPassword(password: string): Promise<string> {
-    const saltRounds = 10;
-    return bcrypt.hash(password, saltRounds);
   }
 }

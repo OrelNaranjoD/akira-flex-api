@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   BeforeInsert,
+  BeforeUpdate,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { TenantUserEntity } from '@orelnaranjod/flex-shared-lib';
@@ -61,7 +62,7 @@ export class TenantUser implements TenantUserEntity {
    * User roles within the tenant.
    * @type {string[]}
    */
-  @Column('simple-array', { default: 'user' })
+  @Column('simple-array', { default: 'USER' })
   roles: string[];
 
   /**
@@ -107,12 +108,13 @@ export class TenantUser implements TenantUserEntity {
   refreshTokenHash: string | null;
 
   /**
-   * Hashes password before inserting into database.
+   * Hashes password before inserting or updating into database.
    * @private
    */
   @BeforeInsert()
+  @BeforeUpdate()
   async hashPassword() {
-    if (this.password) {
+    if (this.password && !this.password.startsWith('$2b$')) {
       this.password = await bcrypt.hash(this.password, 10);
     }
   }

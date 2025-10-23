@@ -20,6 +20,15 @@ describe('TenantService', () => {
       find: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      createQueryBuilder: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      }),
     };
     dataSource = {
       createQueryRunner: jest.fn().mockReturnValue({
@@ -50,9 +59,37 @@ describe('TenantService', () => {
   });
 
   it('should find all tenants', async () => {
-    const tenants = [{ id: '1' }];
-    repo.find.mockResolvedValue(tenants);
-    await expect(service.findAll()).resolves.toEqual(tenants.map((t) => t));
+    const tenants = [
+      {
+        id: '1',
+        name: 'Test Tenant',
+        subdomain: 'test',
+        email: 'test@example.com',
+        active: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        subscriptionEnd: null,
+        maxUsers: 10,
+        modules: [],
+      },
+    ];
+    const mockQueryBuilder = {
+      select: jest.fn().mockReturnThis(),
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([tenants, 1]),
+    };
+    repo.createQueryBuilder = jest.fn().mockReturnValue(mockQueryBuilder);
+
+    const result = await service.findAll();
+    expect(result.tenants).toHaveLength(1);
+    expect(result.total).toBe(1);
+    expect(result.page).toBe(1);
+    expect(result.limit).toBe(10);
+    expect(result.totalPages).toBe(1);
   });
 
   it('create should throw Conflict when existing tenant found', async () => {
@@ -64,7 +101,7 @@ describe('TenantService', () => {
 
   it('create should succeed and return mapped dto', async () => {
     const dto: CreateTenantDto = { name: 'T', subdomain: 's', email: 'a@b.com' };
-    const saved = { id: 't1', ...dto, schemaName: 'tenant_s' };
+    const saved = { id: 't1', ...dto, schemaName: 's' };
 
     repo.findOne = jest.fn().mockResolvedValue(null);
     repo.create = jest.fn().mockReturnValue(dto);

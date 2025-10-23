@@ -8,23 +8,23 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
-  UseGuards,
+  Query,
 } from '@nestjs/common';
 import { PlatformUserService } from './platform-user.service';
 import { CreatePlatformUserDto } from './dtos/create-platform-user.dto';
 import { UpdatePlatformUserDto } from './dtos/update-platform-user.dto';
-import { PlatformAuthGuard } from '../guards/platform-auth.guard';
-import { PlatformPermissionGuard } from '../platform-permissions/guards/platform-permission.guard';
+import { PlatformUserFiltersDto } from './dtos/platform-user-filters.dto';
+import { AssociateTenantsDto } from './dtos/associate-tenants.dto';
 import { RequirePlatformPermission } from '../platform-permissions/decorators/platform-permissions.decorator';
 import { PlatformPermission } from '../../../../core/shared/definitions';
 import { PlatformUser } from './decorators/platform-user.decorator';
 import type { JwtPayload } from '@orelnaranjod/flex-shared-lib';
+import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
 
 /**
  * Controller for managing platform users.
  * @class PlatformUserController
  */
-@UseGuards(PlatformAuthGuard, PlatformPermissionGuard)
 @Controller('platform/users')
 export class PlatformUserController {
   constructor(private readonly platformUserService: PlatformUserService) {}
@@ -42,13 +42,22 @@ export class PlatformUserController {
   }
 
   /**
-   * Retrieves all platform users.
-   * @returns {Promise<PlatformUser[]>} List of users.
+   * Retrieves all platform users with optional filters.
+   * @param page - Page number (default: 1).
+   * @param limit - Number of items per page (default: 10, max: 100).
+   * @param filters - Optional filters to apply to the search.
+   * @returns {Promise<PlatformUserListResponseDto>} Paginated list of users.
    */
   @RequirePlatformPermission(PlatformPermission.USER_VIEW_ALL)
   @Get()
-  async findAll() {
-    return this.platformUserService.findAll();
+  async findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query() filters?: PlatformUserFiltersDto
+  ) {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.platformUserService.findAll(pageNum, limitNum, filters);
   }
 
   /**
@@ -60,7 +69,6 @@ export class PlatformUserController {
   @RequirePlatformPermission(PlatformPermission.USER_ROLE_VIEW_OWN)
   @Get('owner')
   async getOwnerInfo(@PlatformUser() user: JwtPayload) {
-    // JwtPayload.sub contains the user id (UUID) per token generation.
     return this.platformUserService.getOwnerInfo(user.sub);
   }
 
@@ -111,6 +119,18 @@ export class PlatformUserController {
   }
 
   /**
+   * Toggles user active status.
+   * @param id - User ID.
+   * @param dto - New status.
+   * @returns Updated user.
+   */
+  @RequirePlatformPermission(PlatformPermission.USER_UPDATE)
+  @Patch(':id/status')
+  async toggleStatus(@Param('id') id: string, @Body() dto: ToggleUserStatusDto): Promise<any> {
+    return this.platformUserService.toggleUserStatus(id, dto);
+  }
+
+  /**
    * Hard deletes a platform user.
    * @param {string} id - User ID.
    * @returns {Promise<void>}
@@ -134,5 +154,55 @@ export class PlatformUserController {
     @Param('roleId') roleId: string
   ): Promise<void> {
     return this.platformUserService.assignRole(userId, roleId);
+  }
+
+  /**
+   * Associate tenants to a platform user (for admin users).
+   * @param {string} userId - User ID.
+   * @param {AssociateTenantsDto} associateTenantsDto - Tenant association data.
+   * @returns {Promise<void>}
+   */
+  @RequirePlatformPermission(PlatformPermission.TENANT_UPDATE)
+  @Post(':userId/tenants')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async associateTenants(
+    @Param('userId') userId: string,
+    @Body() associateTenantsDto: AssociateTenantsDto
+  ): Promise<void> {
+    return this.platformUserService.associateTenants(userId, associateTenantsDto.tenantIds);
+  }
+
+  /**
+   * Dissociate tenants from a platform user.
+   * @param {string} userId - User ID.
+   * @param {AssociateTenantsDto} associateTenantsDto - Tenant dissociation data.
+   * @returns {Promise<void>}
+   */
+  @RequirePlatformPermission(PlatformPermission.TENANT_UPDATE)
+  @Delete(':userId/tenants')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async dissociateTenants(
+    @Param('userId') userId: string,
+    @Body() associateTenantsDto: AssociateTenantsDto
+  ): Promise<void> {
+    return this.platformUserService.dissociateTenants(userId, associateTenantsDto.tenantIds);
+  }
+
+  /**
+   * Get all tenants managed by a platform user.
+   * @param {string} userId - User ID.
+   * @returns {Promise<any[]>} Array of managed tenants.
+   */
+  @RequirePlatformPermission(PlatformPermission.USER_VIEW)
+  @Get(':userId/tenants')
+  async getManagedTenants(@Param('userId') userId: string): Promise<any[]> {
+    const tenants = await this.platformUserService.getManagedTenants(userId);
+    return tenants.map((tenant) => ({
+      id: tenant.id,
+      name: tenant.name,
+      subdomain: tenant.subdomain,
+      email: tenant.email,
+      active: tenant.active,
+    }));
   }
 }

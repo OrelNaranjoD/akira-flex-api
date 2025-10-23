@@ -17,6 +17,8 @@ import { PermissionModule } from './auth/permissions/permission.module';
 import { PlatformAuthGuard } from './auth/guards/platform-auth.guard';
 import { PlatformPermissionGuard } from './auth/platform-permissions/guards/platform-permission.guard';
 import { TenantManagementModule } from './tenants/tenant-management.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
+import { BillingModule } from './billing/billing.module';
 
 /**
  * Module for platform management. Aggregates auth, users and roles modules.
@@ -40,6 +42,8 @@ import { TenantManagementModule } from './tenants/tenant-management.module';
     RoleModule,
     PermissionModule,
     TenantManagementModule,
+    OnboardingModule,
+    BillingModule,
   ],
   providers: [
     {

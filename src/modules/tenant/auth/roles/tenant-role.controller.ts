@@ -7,7 +7,7 @@ import { TenantPermissions } from './decorators/tenant-permissions.decorator';
 /**
  * Controller for managing tenant-level roles and permissions.
  */
-@Controller('tenant/roles')
+@Controller('tenants/roles')
 export class TenantRolesController {
   constructor(private readonly service: TenantRoleService) {}
 

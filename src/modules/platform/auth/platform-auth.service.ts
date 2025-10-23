@@ -24,6 +24,7 @@ import { TokenService } from '../../../core/token/token.service';
 import type { Request, Response } from 'express';
 import { Logger } from '@nestjs/common';
 import { Role } from './roles/entities/role.entity';
+import * as crypto from 'crypto';
 
 /**
  * Service responsible for platform authentication operations.
@@ -31,16 +32,6 @@ import { Role } from './roles/entities/role.entity';
  */
 @Injectable()
 export class PlatformAuthService {
-  /**
-   * Creates an instance of PlatformAuthService.
-   * @param userPlatformRepository - Repository for platform users.
-   * @param {Repository<PlatformUser>} userRepository - Repository for platform users.
-   * @param {Repository<User>} userRepository - Repository for users.
-   * @param {Repository<Role>} roleRepository - Repository for roles.
-   * @param {TokenService} tokenService - Service for generating and verifying tokens.
-   * @param {MailService} mailService - Service for sending emails.
-   * @param {ConfigService} configService - Service for accessing configuration.
-   */
   constructor(
     @InjectRepository(PlatformUser)
     private readonly userPlatformRepository: Repository<PlatformUser>,
@@ -148,7 +139,7 @@ export class PlatformAuthService {
       const verificationPin = this.generateVerificationPin();
       Logger.debug(`Generated verification PIN for ${savedUser.email}: ${verificationPin}`);
       const hashedPin = await this.hashPin(verificationPin);
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
       savedUser.verificationPin = hashedPin;
       savedUser.verificationPinExpiresAt = expiresAt;
@@ -200,8 +191,10 @@ export class PlatformAuthService {
 
     user.lastLogin = new Date();
 
-    const { refreshToken, refreshTokenHash } =
-      await this.tokenService.generateAndHashRefreshToken(user);
+    const { refreshToken, refreshTokenHash } = await this.tokenService.generateAndHashRefreshToken(
+      user,
+      loginRequestDto.remember
+    );
 
     user.refreshTokenHash = refreshTokenHash;
 
@@ -211,7 +204,7 @@ export class PlatformAuthService {
       await this.userRepository.save(user);
     }
 
-    const tokenResponse = this.tokenService.generateAccessToken(user);
+    const tokenResponse = await this.tokenService.generateAccessToken(user);
 
     return { tokenResponse, refreshToken };
   }
@@ -229,7 +222,7 @@ export class PlatformAuthService {
     const { tokenResponse, refreshToken } = await this.login(loginRequestDto);
     if (refreshToken) {
       const cookieOptions = this.tokenService.getRefreshCookieOptions();
-      res.cookie('refresh_token', refreshToken, cookieOptions);
+      res.cookie('platform_refresh_token', refreshToken, cookieOptions);
     }
     return tokenResponse;
   }
@@ -267,7 +260,7 @@ export class PlatformAuthService {
    * @private
    */
   private generateVerificationPin(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return crypto.randomInt(100000, 1000000).toString();
   }
 
   /**
@@ -330,7 +323,7 @@ export class PlatformAuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-    const resetToken = this.tokenService.generatePasswordResetToken(user);
+    const resetToken = await this.tokenService.generatePasswordResetToken(user);
     await this.mailService.sendRecoveryPasswordEmail(
       user.email,
       user.firstName + ' ' + user.lastName,
@@ -351,7 +344,7 @@ export class PlatformAuthService {
    * @throws {UnauthorizedException} If token is invalid, expired, or user not found.
    */
   async resetPassword(token: string, password: string): Promise<TokenResponseDto> {
-    const payload = this.tokenService.verifyToken<JwtPayload>(token);
+    const payload = await this.tokenService.verifyToken<JwtPayload>(token);
     if (payload.type !== JwtPayloadType.PASSWORD_RESET) {
       throw new UnauthorizedException('Invalid token type');
     }
@@ -361,7 +354,7 @@ export class PlatformAuthService {
     }
     user.password = password;
     await this.userRepository.save(user);
-    return this.tokenService.generateAccessToken(user);
+    return await this.tokenService.generateAccessToken(user);
   }
 
   /**
@@ -375,7 +368,7 @@ export class PlatformAuthService {
     refreshToken?: string;
     refreshExpiresIn?: number;
   }> {
-    const payload = this.tokenService.verifyRefreshToken<JwtRefreshPayload>(token);
+    const payload = await this.tokenService.verifyRefreshToken<JwtRefreshPayload>(token);
     if (payload.type !== JwtPayloadType.REFRESH) {
       throw new UnauthorizedException('Invalid token type');
     }
@@ -411,7 +404,7 @@ export class PlatformAuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const tokenResponse = this.tokenService.generateAccessToken(user);
+    const tokenResponse = await this.tokenService.generateAccessToken(user);
 
     const { refreshToken } = await this.tokenService.generateAndHashRefreshToken(user);
 
@@ -431,14 +424,14 @@ export class PlatformAuthService {
    * @returns New authentication tokens.
    */
   async refreshWithCookie(req: Request, res: Response): Promise<TokenResponseDto> {
-    const refreshToken = String(req.cookies?.refresh_token || '');
+    const refreshToken = String(req.cookies?.platform_refresh_token || '');
     if (!refreshToken) throw new UnauthorizedException('No refresh token');
 
     const { tokenResponse, refreshToken: newRefreshToken } = await this.refreshTokens(refreshToken);
 
     if (newRefreshToken) {
       const cookieOptions = this.tokenService.getRefreshCookieOptions();
-      res.cookie('refresh_token', newRefreshToken, cookieOptions);
+      res.cookie('platform_refresh_token', newRefreshToken, cookieOptions);
     }
 
     return tokenResponse;
@@ -453,7 +446,7 @@ export class PlatformAuthService {
   async logout(token?: string, userId?: string): Promise<{ message: string }> {
     if (token) {
       try {
-        const payload = this.tokenService.verifyRefreshToken<JwtRefreshPayload>(token);
+        const payload = await this.tokenService.verifyRefreshToken<JwtRefreshPayload>(token);
 
         let user: PlatformUser | User | null = await this.userRepository.findOne({
           where: { id: payload.sub },
@@ -512,7 +505,7 @@ export class PlatformAuthService {
     res: Response,
     userId?: string
   ): Promise<{ message: string }> {
-    const refreshToken = String(req.cookies?.refresh_token || '');
+    const refreshToken = String(req.cookies?.platform_refresh_token || '');
     const result = await this.logout(refreshToken || undefined, userId);
 
     const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
@@ -522,7 +515,7 @@ export class PlatformAuthService {
       secure: isProduction,
       sameSite: isProduction ? ('none' as const) : ('lax' as const),
     };
-    res.clearCookie('refresh_token', clearOptions);
+    res.clearCookie('platform_refresh_token', clearOptions);
     return result;
   }
 

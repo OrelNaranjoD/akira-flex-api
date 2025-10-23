@@ -19,25 +19,37 @@ export class PlatformRolesSeeder {
   async seed(): Promise<void> {
     const roleRepo = this.dataSource.getRepository(PlatformRole);
     const permissionRepo = this.dataSource.getRepository(PlatformPermission);
-
     const allPermissions = await permissionRepo.find();
 
     for (const roleData of PLATFORM_ROLES_DATA) {
-      let permissions: PlatformPermission[] = [];
+      const existingRole = await roleRepo.findOne({
+        where: { name: roleData.name },
+      });
 
-      if (roleData.name === 'SUPER_ADMIN') {
-        permissions = allPermissions;
-      } else if (roleData.name === 'AUDITOR') {
-        const auditorPerm = allPermissions.find((p) => p.code === 'PERMISSION_VIEW_ALL');
-        permissions = auditorPerm ? [auditorPerm] : [];
+      if (!existingRole) {
+        let permissions: PlatformPermission[] = [];
+
+        if (roleData.name === 'SUPER_ADMIN') {
+          permissions = allPermissions;
+        } else if (roleData.name === 'AUDITOR') {
+          const auditorPerm = allPermissions.find((p) => p.code === 'PERMISSION_VIEW_ALL');
+          permissions = auditorPerm ? [auditorPerm] : [];
+        } else if (roleData.name === 'USER') {
+          const basicPermCodes = [
+            'USER_ROLE_VIEW_OWN',
+            'USER_VIEW',
+            'TENANT_VIEW',
+            'TENANT_VIEW_ALL',
+          ];
+          permissions = allPermissions.filter((p) => basicPermCodes.includes(p.code));
+        }
+
+        const role = roleRepo.create({
+          name: roleData.name,
+          permissions,
+        } as unknown as Partial<PlatformRole>);
+        await roleRepo.save(role);
       }
-
-      const role = roleRepo.create({
-        name: roleData.name,
-        permissions,
-      } as unknown as Partial<PlatformRole>);
-      await roleRepo.save(role);
-      this.logger.log(`Created platform role: ${roleData.name}`);
     }
   }
 }

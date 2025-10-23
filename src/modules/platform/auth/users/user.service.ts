@@ -8,6 +8,9 @@ import { UpdateUserDto } from './dtos/update-user.dto';
 import { UserResponseDto } from './dtos/user-response.dto';
 import { Status } from '../../../../core/shared/definitions';
 import { mapUserToResponse } from './mappers/user-response.mapper';
+import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
+import { UserListResponseDto } from './dtos/user-list-response.dto';
+import { UserFiltersDto } from './dtos/user-filters.dto';
 
 /**
  * Service for managing  users.
@@ -51,11 +54,89 @@ export class UserService {
   }
 
   /**
-   * Retrieves all  users.
-   * @returns {Promise<User[]>} List of users.
+   * Retrieves all users with optional filters and pagination.
+   * @param filters - Optional filters to apply.
+   * @param page - Page number (1-based, default: 1).
+   * @param limit - Number of items per page (default: 10, max: 100).
+   * @returns {Promise<UserListResponseDto>} Paginated and filtered list of users.
    */
-  async findAll(): Promise<User[]> {
-    return this.userRepository.find();
+  async findAll(
+    filters?: UserFiltersDto,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<UserListResponseDto> {
+    const validPage = Math.max(1, page);
+    const validLimit = Math.min(Math.max(1, limit), 100);
+    const skip = (validPage - 1) * validLimit;
+
+    const queryBuilder = this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'role');
+
+    if (filters) {
+      if (filters.email) {
+        queryBuilder.andWhere('LOWER(user.email) LIKE LOWER(:email)', {
+          email: `%${filters.email}%`,
+        });
+      }
+
+      if (filters.firstName) {
+        queryBuilder.andWhere('LOWER(user.firstName) LIKE LOWER(:firstName)', {
+          firstName: `%${filters.firstName}%`,
+        });
+      }
+
+      if (filters.lastName) {
+        queryBuilder.andWhere('LOWER(user.lastName) LIKE LOWER(:lastName)', {
+          lastName: `%${filters.lastName}%`,
+        });
+      }
+
+      if (filters.status) {
+        queryBuilder.andWhere('user.status = :status', { status: filters.status });
+      }
+
+      if (filters.roles && filters.roles.length > 0) {
+        queryBuilder.andWhere('role.name IN (:...roles)', { roles: filters.roles });
+      }
+
+      if (filters.createdFrom) {
+        queryBuilder.andWhere('user.createdAt >= :createdFrom', {
+          createdFrom: filters.createdFrom,
+        });
+      }
+
+      if (filters.createdTo) {
+        queryBuilder.andWhere('user.createdAt <= :createdTo', {
+          createdTo: filters.createdTo,
+        });
+      }
+
+      if (filters.lastLoginFrom) {
+        queryBuilder.andWhere('user.lastLogin >= :lastLoginFrom', {
+          lastLoginFrom: filters.lastLoginFrom,
+        });
+      }
+
+      if (filters.lastLoginTo) {
+        queryBuilder.andWhere('user.lastLogin <= :lastLoginTo', {
+          lastLoginTo: filters.lastLoginTo,
+        });
+      }
+    }
+
+    queryBuilder.orderBy('user.createdAt', 'DESC').skip(skip).take(validLimit);
+
+    const [users, total] = await queryBuilder.getManyAndCount();
+    const totalPages = Math.ceil(total / validLimit);
+
+    return {
+      users: users.map(mapUserToResponse),
+      total,
+      page: validPage,
+      limit: validLimit,
+      totalPages,
+    };
   }
 
   /**
@@ -104,6 +185,18 @@ export class UserService {
   }
 
   /**
+   * Toggles user active status.
+   * @param id - User ID.
+   * @param dto - New status.
+   * @returns Updated user.
+   */
+  async toggleUserStatus(id: string, dto: ToggleUserStatusDto): Promise<User> {
+    const user = await this.findOne(id);
+    user.status = dto.active ? Status.ACTIVE : Status.INACTIVE;
+    return this.userRepository.save(user);
+  }
+
+  /**
    * Hard deletes a  user.
    * @param {string} id - User ID.
    * @returns {Promise<void>}
@@ -124,10 +217,8 @@ export class UserService {
     const role = await this.roleRepository.findOne({ where: { id: roleId } });
     if (!role) throw new NotFoundException('Role not found');
 
-    // initialize roles array if missing
     if (!user.roles) user.roles = [] as any;
 
-    // avoid duplicates
     const already = (user.roles as any[]).some((r) => r.id === role.id || r === role.id);
     if (!already) {
       (user.roles as any[]).push(role);

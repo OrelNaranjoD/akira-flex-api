@@ -19,14 +19,18 @@ describe('TenantConnectionService', () => {
   });
 
   it('should create/get a tenant datasource (mocked createMultiTenantDataSource may be external)', async () => {
-    // We only assert that getTenantDataSource returns a promise and caches the result
     const spy = jest.spyOn<any, any>(service as any, 'getTenantDataSource');
     spy.mockResolvedValue({} as any);
     await expect(service.getTenantDataSource('schema')).resolves.toBeDefined();
   });
 
   it('getTenantDataSource should call createMultiTenantDataSource and cache result', async () => {
-    const fakeDs = { isInitialized: true, getRepository: jest.fn(), destroy: jest.fn() } as any;
+    const fakeDs = {
+      isInitialized: true,
+      getRepository: jest.fn(),
+      destroy: jest.fn(),
+      query: jest.fn(),
+    } as any;
     (multi.createMultiTenantDataSource as jest.Mock).mockResolvedValue(fakeDs);
 
     const ds1 = await service.getTenantDataSource('s1');
@@ -34,11 +38,15 @@ describe('TenantConnectionService', () => {
 
     expect(multi.createMultiTenantDataSource).toHaveBeenCalledWith('s1', expect.any(Object));
     expect(ds1).toBe(fakeDs);
-    expect(ds2).toBe(fakeDs); // cached
+    expect(ds2).toBe(fakeDs);
   });
 
   it('getRepository should delegate to datasource.getRepository', async () => {
-    const fakeDs = { isInitialized: true, getRepository: jest.fn().mockReturnValue('repo') } as any;
+    const fakeDs = {
+      isInitialized: true,
+      getRepository: jest.fn().mockReturnValue('repo'),
+      query: jest.fn(),
+    } as any;
     (multi.createMultiTenantDataSource as jest.Mock).mockResolvedValue(fakeDs);
 
     /**
@@ -55,7 +63,6 @@ describe('TenantConnectionService', () => {
   it('onModuleDestroy should destroy initialized datasources and clear map', async () => {
     const dsA = { isInitialized: true, destroy: jest.fn() } as any;
     const dsB = { isInitialized: false, destroy: jest.fn() } as any;
-    // inject into private map
     (service as any).tenantDataSources.set('a', dsA);
     (service as any).tenantDataSources.set('b', dsB);
 

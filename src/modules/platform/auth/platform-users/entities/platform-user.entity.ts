@@ -12,6 +12,17 @@ import * as bcrypt from 'bcrypt';
 import { PlatformRole } from '../../platform-roles/entities/platform-role.entity';
 import { PlatformUserEntity } from '@shared';
 import { PlatformPermission } from '../../platform-permissions/entities/platform-permission.entity';
+import { Tenant } from '../../../tenants/entities/tenant.entity';
+
+/**
+ * Enum for tenant request status.
+ */
+export enum TenantRequestStatus {
+  NONE = 'none',
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
 
 /**
  * Represents a platform user.
@@ -74,6 +85,18 @@ export class PlatformUser implements PlatformUserEntity {
   roles: any;
 
   /**
+   * Tenants that this platform user can manage (for admin users).
+   * @type {Tenant[]}
+   */
+  @ManyToMany(() => Tenant, { eager: false })
+  @JoinTable({
+    name: 'platform_user_tenants',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'tenant_id', referencedColumnName: 'id' },
+  })
+  managedTenants: Tenant[];
+
+  /**
    * Returns all permissions for the user derived from roles.
    * @returns {PlatformPermission[]} Array of unique permissions.
    */
@@ -82,7 +105,6 @@ export class PlatformUser implements PlatformUserEntity {
     const perms: PlatformPermission[] = (this.roles as any[]).flatMap(
       (role: any) => (role.permissions || []) as PlatformPermission[]
     );
-    // Remove duplicates by id
     const unique = new Map<string, PlatformPermission>(
       perms.map((p: PlatformPermission) => [p.id, p] as [string, PlatformPermission])
     );
@@ -123,6 +145,32 @@ export class PlatformUser implements PlatformUserEntity {
    */
   @Column({ type: 'varchar', name: 'refresh_token_hash', nullable: true })
   refreshTokenHash?: string;
+
+  /**
+   * Status of tenant creation request.
+   * @type {TenantRequestStatus}
+   */
+  @Column({
+    type: 'enum',
+    enum: TenantRequestStatus,
+    default: TenantRequestStatus.NONE,
+    name: 'tenant_request_status',
+  })
+  tenantRequestStatus: TenantRequestStatus;
+
+  /**
+   * Requested company name for tenant creation.
+   * @type {string}
+   */
+  @Column({ type: 'varchar', name: 'requested_company_name', nullable: true })
+  requestedCompanyName?: string;
+
+  /**
+   * Requested subdomain for tenant creation.
+   * @type {string}
+   */
+  @Column({ type: 'varchar', name: 'requested_subdomain', nullable: true })
+  requestedSubdomain?: string;
 
   /**
    * Hashes password before inserting into database.

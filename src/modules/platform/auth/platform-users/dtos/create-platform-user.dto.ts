@@ -1,6 +1,6 @@
-import { IsString, IsEmail, IsArray, IsOptional } from 'class-validator';
-//@TODO Fix import to shared lib
+import { IsString, IsEmail, IsArray, IsOptional, IsEnum } from 'class-validator';
 import { CreatePlatformUserDto as DefCreatePlatformUserDto } from '@shared';
+import { TenantRequestStatus } from '../entities/platform-user.entity';
 
 /**
  * Data Transfer Object for creating a user on the platform.
@@ -50,4 +50,28 @@ export class CreatePlatformUserDto implements DefCreatePlatformUserDto {
   @IsArray()
   @IsString({ each: true })
   roles: string[];
+
+  /**
+   * Status of tenant creation request.
+   * @type {TenantRequestStatus}
+   */
+  @IsOptional()
+  @IsEnum(TenantRequestStatus)
+  tenantRequestStatus?: TenantRequestStatus;
+
+  /**
+   * Requested company name for tenant creation.
+   * @type {string}
+   */
+  @IsOptional()
+  @IsString()
+  requestedCompanyName?: string;
+
+  /**
+   * Requested subdomain for tenant creation.
+   * @type {string}
+   */
+  @IsOptional()
+  @IsString()
+  requestedSubdomain?: string;
 }

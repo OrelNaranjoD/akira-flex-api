@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsBoolean } from 'class-validator';
 import { LoginRequestDto as DefLoginRequestDto } from '@orelnaranjod/flex-shared-lib';
 
 /**
@@ -20,4 +20,12 @@ export class LoginRequestDto implements DefLoginRequestDto {
   @IsString()
   @MinLength(6)
   password: string;
+
+  /**
+   * Whether to remember the user (longer refresh token).
+   * @type {boolean}
+   */
+  @IsOptional()
+  @IsBoolean()
+  remember?: boolean;
 }

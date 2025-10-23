@@ -8,13 +8,19 @@ import { User } from './users/entities/user.entity';
 import { Role } from './roles/entities/role.entity';
 import { MailModule } from '../../../core/mail/mail.module';
 import { TokenModule } from '../../../core/token/token.module';
+import { PlatformUsersModule } from './platform-users/platform-user.module';
 
 /**
  * Module for platform authentication functionality.
  * @module PlatformAuthModule
  */
 @Module({
-  imports: [MailModule, TypeOrmModule.forFeature([PlatformUser, User, Role]), TokenModule],
+  imports: [
+    MailModule,
+    TypeOrmModule.forFeature([PlatformUser, User, Role]),
+    TokenModule,
+    PlatformUsersModule,
+  ],
   controllers: [PlatformAuthController],
   providers: [PlatformAuthService, PlatformJwtStrategy],
   exports: [PlatformAuthService],

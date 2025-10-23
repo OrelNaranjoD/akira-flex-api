@@ -19,7 +19,7 @@ export class TenantPermissionGuard implements CanActivate {
    */
   canActivate(context: ExecutionContext): boolean {
     const requiredPermissions =
-      this.reflector.get<TenantPermission[]>('permissions', context.getHandler()) || [];
+      this.reflector.get<TenantPermission[]>('tenant-permissions', context.getHandler()) || [];
 
     if (requiredPermissions.length === 0) {
       return true;
@@ -29,7 +29,6 @@ export class TenantPermissionGuard implements CanActivate {
     const userRoles: string[] = request.user?.roles || [];
     const userPermissions: TenantPermission[] = request.user?.permissions || [];
 
-    // Allow SUPER_ADMIN to access tenant routes
     if (userRoles.includes(PlatformRole.SUPER_ADMIN)) {
       return true;
     }

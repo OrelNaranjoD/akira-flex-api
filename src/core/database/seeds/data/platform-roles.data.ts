@@ -10,4 +10,8 @@ export const PLATFORM_ROLES_DATA = [
     name: 'AUDITOR',
     description: 'Auditor with limited permissions',
   },
+  {
+    name: 'USER',
+    description: 'Basic user with standard permissions',
+  },
 ];

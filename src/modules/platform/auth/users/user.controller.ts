@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dtos/create-user.dto';
@@ -19,6 +20,9 @@ import { RequirePermission } from '../permissions/decorators/permissions.decorat
 import { Permission } from '../../../../core/shared/definitions';
 import { User } from './decorators/user.decorator';
 import type { JwtPayload } from '@orelnaranjod/flex-shared-lib';
+import { ToggleUserStatusDto } from '../../../tenant/auth/users/dtos/user-management.dto';
+import { UserListResponseDto } from './dtos/user-list-response.dto';
+import { UserFiltersDto } from './dtos/user-filters.dto';
 
 /**
  * Controller for managing  users.
@@ -42,13 +46,22 @@ export class UserController {
   }
 
   /**
-   * Retrieves all  users.
-   * @returns {Promise<User[]>} List of users.
+   * Retrieves all  users with optional filters and pagination.
+   * @param filters - Optional filters for searching users.
+   * @param page - Page number (default: 1).
+   * @param limit - Number of items per page (default: 10).
+   * @returns Paginated and filtered list of users.
    */
   @RequirePermission(Permission.USER_VIEW_ALL)
   @Get()
-  async findAll() {
-    return this.UserService.findAll();
+  async findAll(
+    @Query() filters?: UserFiltersDto,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ): Promise<UserListResponseDto> {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.UserService.findAll(filters, pageNum, limitNum);
   }
 
   /**
@@ -60,7 +73,6 @@ export class UserController {
   @RequirePermission(Permission.USER_ROLE_VIEW_OWN)
   @Get('owner')
   async getOwnerInfo(@User() user: JwtPayload) {
-    // JwtPayload.sub contains the user id (UUID) per token generation.
     return this.UserService.getOwnerInfo(user.sub);
   }
 
@@ -108,6 +120,18 @@ export class UserController {
   @Patch(':id/restore')
   async restore(@Param('id') id: string): Promise<void> {
     return this.UserService.restore(id);
+  }
+
+  /**
+   * Toggles user active status.
+   * @param id - User ID.
+   * @param dto - New status.
+   * @returns Updated user.
+   */
+  @RequirePermission(Permission.USER_UPDATE)
+  @Patch(':id/status')
+  async toggleStatus(@Param('id') id: string, @Body() dto: ToggleUserStatusDto): Promise<any> {
+    return this.UserService.toggleUserStatus(id, dto);
   }
 
   /**

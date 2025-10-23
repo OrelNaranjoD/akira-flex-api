@@ -9,8 +9,10 @@ import { PlatformModule } from './modules/platform/platform.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { StatusModule } from './core/status/status.module';
 import { DatabaseModule } from './core/database/database.module';
-import { InitialSeeder } from './core/database/seeds/initial.seeder';
 import { AuditModule } from './core/audit/audit.module';
+import { SharedModule } from './core/shared/shared.module';
+import { InitialSeeder } from './core/database/seeds/initial.seeder';
+import { platformEntities } from './core/database/entities';
 
 /**
  * Main application module for Akira Flex API.
@@ -28,12 +30,17 @@ import { AuditModule } from './core/audit/audit.module';
         DATABASE_URL: Joi.string().uri().required(),
         DATABASE_TEST_URL: Joi.string().uri().optional(),
         TYPEORM_LOGGING: Joi.string().valid('true', 'false').default('false'),
+        TYPEORM_DROP_SCHEMA: Joi.string().valid('true', 'false').default('false'),
+        TYPEORM_SEEDER: Joi.string().valid('true', 'false').default('false'),
         PORT: Joi.number().port().default(3000),
         FRONTEND_URL: Joi.string().uri().optional(),
         CORS_ORIGINS: Joi.string().optional(),
         TRUST_PROXY: Joi.string().valid('true', 'false').default('false'),
-        JWT_SECRET: Joi.string().min(32).required(),
+        JWT_PLATFORM_SECRET: Joi.string().min(32).required(),
         JWT_TENANT_SECRET: Joi.string().min(32).optional(),
+        JWT_KEY_ROTATION_ENABLED: Joi.string().valid('true', 'false').default('true'),
+        JWT_KEY_ROTATION_INTERVAL_HOURS: Joi.number().min(1).max(168).default(24), // 1 hour to 1 week
+        JWT_KEY_RETENTION_COUNT: Joi.number().min(1).max(10).default(5), // Keep up to 10 old keys
         SUPER_ADMIN_PASSWORD: Joi.string().min(8).required(),
         ENABLE_DEBUG_REQUEST_INTERCEPTOR: Joi.string().valid('true', 'false').optional(),
         ENABLE_DEBUG_RESPONSE_INTERCEPTOR: Joi.string().valid('true', 'false').optional(),
@@ -76,16 +83,19 @@ import { AuditModule } from './core/audit/audit.module';
           ? configService.get<string>('DATABASE_TEST_URL') ||
             configService.get<string>('DATABASE_URL')
           : configService.get<string>('DATABASE_URL');
-        const typeormLogging = configService.get<string>('TYPEORM_LOGGING');
-        const isLoggerEnabled = typeormLogging === 'true';
+        const isLoggerEnabled = configService.get<string>('TYPEORM_LOGGING') === 'true';
+        const dropSchema =
+          !isProduction && (configService.get<string>('TYPEORM_DROP_SCHEMA') === 'true' || isTest);
+        const synchronize =
+          !isProduction && (configService.get<string>('TYPEORM_SYNCHRONIZE') === 'true' || isTest);
 
         return {
           type: 'postgres',
           url: databaseUrl,
           autoLoadEntities: true,
-          entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          synchronize: !isProduction,
-          dropSchema: !isProduction,
+          entities: platformEntities,
+          synchronize,
+          dropSchema,
           logging: isLoggerEnabled,
           ssl: isProduction ? { rejectUnauthorized: false } : false,
           extra: isProduction ? { ssl: { rejectUnauthorized: false } } : {},
@@ -97,6 +107,7 @@ import { AuditModule } from './core/audit/audit.module';
     PlatformModule,
     TenantModule,
     StatusModule,
+    SharedModule,
   ],
 })
 export class AppModule implements OnModuleInit {
@@ -117,7 +128,8 @@ export class AppModule implements OnModuleInit {
    * Runs seeding on module initialization.
    */
   async onModuleInit() {
-    if (!this.isProd()) {
+    const shouldSeed = this.configService.get<string>('TYPEORM_SEEDER') === 'true';
+    if (shouldSeed || this.configService.get<string>('NODE_ENV') === 'test') {
       await this.initialSeeder.seed();
     }
   }

@@ -8,18 +8,19 @@ import { BusinessRolesSeeder } from './seeds/platform/business-roles.seeder';
 import { TenantPermissionsSeeder } from './seeds/tenant/tenant-permissions.seeder';
 import { TenantSeeder } from './seeds/tenant/tenant.seeder';
 import { AkiraFlexTenantSeeder } from './seeds/tenant/akiraflex-tenant.seeder';
-import { TestCorpTenantSeeder } from './seeds/tenant/testcorp-tenant.seeder';
+import { RepUSATenantSeeder } from './seeds/tenant/repusa-tenant.seeder';
 import { MaestranzasUnidosTenantSeeder } from './seeds/tenant/maestranzas-unidos-tenant.seeder';
-
 import { TenantConnectionService } from '../../modules/platform/tenants/services/tenant-connection.service';
 import { TenantContextService } from '../shared/tenant-context.service';
+import { PlatformUsersModule } from '../../modules/platform/auth/platform-users/platform-user.module';
+import { PlatformRoleModule } from '../../modules/platform/auth/platform-roles/platform-role.module';
 
 /**
  * Module for database operations and seeding.
  * @module DatabaseModule
  */
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, PlatformUsersModule, PlatformRoleModule],
   providers: [
     InitialSeeder,
     PlatformPermissionsSeeder,
@@ -29,7 +30,7 @@ import { TenantContextService } from '../shared/tenant-context.service';
     TenantPermissionsSeeder,
     TenantSeeder,
     AkiraFlexTenantSeeder,
-    TestCorpTenantSeeder,
+    RepUSATenantSeeder,
     MaestranzasUnidosTenantSeeder,
     TenantConnectionService,
     TenantContextService,

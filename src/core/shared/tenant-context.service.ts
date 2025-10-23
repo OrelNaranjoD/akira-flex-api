@@ -6,7 +6,7 @@ import { REQUEST } from '@nestjs/core';
  * This service centralizes access to tenantId and schemaName, ensuring they are
  * only accessible within a tenant-scoped context.
  */
-@Injectable({ scope: Scope.REQUEST })
+@Injectable({ scope: Scope.REQUEST, durable: true })
 export class TenantContextService {
   private tenantId: string | null = null;
   private schemaName: string | null = null;

@@ -1,7 +1,6 @@
 import { Injectable, ExecutionContext } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
-import { Observable } from 'rxjs';
 
 /**
  * Guard for platform authentication.
@@ -19,7 +18,7 @@ export class PlatformAuthGuard extends AuthGuard('platform-jwt') {
    * @param {ExecutionContext} context - Execution context.
    * @returns {boolean | Promise<boolean> | Observable<boolean>} Whether the route can be activated.
    */
-  canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
       context.getHandler(),
       context.getClass(),
@@ -27,6 +26,14 @@ export class PlatformAuthGuard extends AuthGuard('platform-jwt') {
     if (isPublic) {
       return true;
     }
-    return super.canActivate(context);
+
+    try {
+      return (await super.canActivate(context)) as boolean;
+    } catch (error) {
+      if (error.message === 'Invalid token type for platform access') {
+        return true;
+      }
+      throw error;
+    }
   }
 }

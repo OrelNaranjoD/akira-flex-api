@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Patch, Query, Req, Res, Get, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, Patch, Query, Req, Res, Get } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { PlatformAuthService } from './platform-auth.service';
 import { RegisterDto } from './dtos/register.dto';
@@ -14,38 +14,14 @@ import { Public } from '../../../core/decorators/public.decorator';
 import { TokenService } from '../../../core/token/token.service';
 import { User } from './users/entities/user.entity';
 import { PlatformUser } from './platform-users/entities/platform-user.entity';
-import { VerifyEmailDto } from './dtos/verify-email.dto';
-import { ResendVerificationDto } from './dtos/resend-verification.dto';
-import { VerifyEmailResponseDto } from './dtos/verify-email-response.dto';
-import { ResendVerificationResponseDto } from './dtos/resend-verification-response.dto';
 
 /**
  * Controller for platform authentication operations.
  * @class PlatformAuthController
- * @description /auth.
+ * @description /auth/platform.
  */
-@Controller('/auth')
+@Controller('/auth/platform')
 export class PlatformAuthController {
-  /**
-   * Resends the email verification code to an existing user.
-   * @param resendVerificationDto - Object containing email.
-   * @returns {Promise<ResendVerificationResponseDto>} Success message.
-   * @description POST /resend-verification
-   * Publicly accessible endpoint.
-   */
-  @Public()
-  @Post('resend-verification')
-  async resendVerification(
-    @Body() resendVerificationDto: ResendVerificationDto
-  ): Promise<ResendVerificationResponseDto> {
-    await this.authService.resendVerificationEmail(resendVerificationDto.email);
-    return { message: 'Verification code sent' };
-  }
-  /**
-   * Creates an instance of PlatformAuthController.
-   * @param {PlatformAuthService} authService - Platform authentication service.
-   * @param {TokenService} tokenService - Token helper service (for cookie options).
-   */
   constructor(
     private readonly authService: PlatformAuthService,
     private readonly tokenService: TokenService
@@ -58,31 +34,10 @@ export class PlatformAuthController {
    * @description POST /register.
    * Only accessible by super_admin role.
    */
-  @Post('platform/register')
+  @Post('register')
   @RequirePlatformPermission(PlatformPermission.AUTH_REGISTER)
   async registerPlatformUser(@Body() registerDto: RegisterDto): Promise<TokenResponseDto> {
     return this.authService.registerPlatformUser(registerDto);
-  }
-
-  /**
-   * Registers a new user.
-   * @param registerDto - User registration data.
-   * @returns {Promise<{id: string, email: string, firstName: string, lastName: string, createdAt: string}>} Registration result.
-   * @description POST /register.
-   * Publicly accessible endpoint.
-   * Sends a verification email upon successful registration.
-   */
-  @Public()
-  @HttpCode(201)
-  @Post('register')
-  async registerUser(@Body() registerDto: RegisterDto): Promise<{
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    createdAt: string;
-  }> {
-    return this.authService.registerUser(registerDto);
   }
 
   /**
@@ -99,19 +54,6 @@ export class PlatformAuthController {
     @Res({ passthrough: true }) res: Response
   ): Promise<TokenResponseDto> {
     return this.authService.loginWithCookie(loginRequestDto, res);
-  }
-
-  /**
-   * Verifies a email address using verification code.
-   * @param verifyEmailDto - Object containing email and verificationCode.
-   * @returns {Promise<VerifyEmailResponseDto>} Success message.
-   * @description POST /verify-email.
-   */
-  @Public()
-  @Post('verify-email')
-  async verifyEmail(@Body() verifyEmailDto: VerifyEmailDto): Promise<VerifyEmailResponseDto> {
-    await this.authService.verifyEmail(verifyEmailDto.email, verifyEmailDto.verificationCode);
-    return { message: 'Email verified successfully' };
   }
 
   /**

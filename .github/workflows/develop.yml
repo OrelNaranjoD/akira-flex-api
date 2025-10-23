@@ -69,6 +69,7 @@ jobs:
         run: npm run test:e2e
         env:
           NODE_ENV: test
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
           DATABASE_TEST_URL: postgresql://test_user:test_password@localhost:5432/test_db
           JWT_PLATFORM_SECRET: test-jwt-platform-secret-that-is-at-least-32-characters-long
           JWT_TENANT_SECRET: test-jwt-tenant-secret-that-is-at-least-32-characters-long

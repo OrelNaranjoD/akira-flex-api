@@ -5,7 +5,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { CreateTenantDto } from '../dtos/create-tenant.dto';
 import { UpdateTenantDto } from '../dtos/update-tenant.dto';
 import { Tenant } from '../entities/tenant.entity';
@@ -189,19 +189,12 @@ export class TenantService {
   }
 
   /**
-   * Retrieves a specific tenant by ID (internal use - returns full entity).
-   * @param {string} id - ID of the tenant to retrieve.
-   * @returns {Promise<Tenant>} The requested tenant entity.
-   * @throws {NotFoundException} If tenant is not found.
+   * Retrieves multiple tenants by their IDs.
+   * @param {string[]} ids - Array of tenant IDs to retrieve.
+   * @returns {Promise<Tenant[]>} Array of found tenants.
    */
-  async findOneInternal(id: string): Promise<Tenant> {
-    const tenant = await this.tenantRepository.findOne({ where: { id } });
-
-    if (!tenant) {
-      throw new NotFoundException(`Tenant with ID ${id} not found`);
-    }
-
-    return tenant;
+  async findByIds(ids: string[]): Promise<Tenant[]> {
+    return this.tenantRepository.findBy({ id: In(ids) });
   }
 
   /**

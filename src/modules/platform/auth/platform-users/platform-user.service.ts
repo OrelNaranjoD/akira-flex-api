@@ -23,8 +23,6 @@ export class PlatformUserService {
     private readonly userRepository: Repository<PlatformUser>,
     @InjectRepository(PlatformRole)
     private readonly roleRepository: Repository<PlatformRole>,
-    @InjectRepository(Tenant)
-    private readonly tenantRepository: Repository<Tenant>,
     private readonly tenantService: TenantService
   ) {}
 
@@ -352,7 +350,7 @@ export class PlatformUserService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const tenants = await this.tenantRepository.findByIds(tenantIds);
+    const tenants = await this.tenantService.findByIds(tenantIds);
     if (tenants.length !== tenantIds.length) {
       throw new NotFoundException('One or more tenants not found');
     }
